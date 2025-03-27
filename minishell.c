@@ -3,15 +3,16 @@
 void    parsing_input(t_vars *vars)
 {
     char    *input;
-    char    **cmd;
-    int     i;
+    // char    **cmd;
+    // int     i;
 
     vars->end = 1;
     while (vars->end)
     {
         input = readline("minishell$ ");
+        printf("input : %s\n", input);
         add_history(input);
-        
+        ft_printf("input123: %s\n", input);
     }
 }
 
@@ -43,6 +44,8 @@ int main (int ac, char **av, char **env)
 {
     t_vars  vars;
 
+    (void)ac;
+    (void)av;
     init_env(&vars, env);
     // while (vars.env_list->prev)
     // {
