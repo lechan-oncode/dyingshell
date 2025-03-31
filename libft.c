@@ -1,5 +1,43 @@
 # include "minishell.h"
 
+int	ft_isalpha(int i)
+{
+	return ((i >= 'A' && i <= 'Z') || (i >= 'a' && i <= 'z'));
+}
+
+int	ft_isdigit(int i)
+{
+	return (i >= '0' && i <= '9');
+}
+int	ft_isalnum(int i)
+{
+	return (ft_isalpha(i) || ft_isdigit(i));
+}
+int	ft_atoi(const char *str)
+{
+	int	i;
+	int	num;
+	int	sign;
+
+	i = 0;
+	num = 0;
+	sign = 1;
+	while ((str[i] >= 9 && str[i] <= 13) || str[i] == ' ')
+		i++;
+	if (str[i] == '+' || str[i] == '-')
+	{
+		if (str[i] == '-')
+			sign = -1;
+		i++;
+	}
+	while (str[i] >= '0' && str[i] <= '9')
+	{
+		num = num * 10 + str[i] - '0';
+		i++;
+	}
+	return (num * sign);
+}
+
 char	*ft_strchr(const char *s, int c)
 {
 	int	i;
@@ -56,6 +94,24 @@ void	*ft_calloc(size_t count, size_t size)
 	while (++i < size * count)
 		m[i] = 0;
 	return (m);
+}
+
+char	*ft_strjoin(char const *s1, char const *s2)
+{
+	size_t	s1_len;
+	size_t	s2_len;
+	char	*join;
+
+	if (!s1 || !s2)
+		return (NULL);
+	s1_len = ft_strlen(s1);
+	s2_len = ft_strlen(s2);
+	join = (char *)malloc((s1_len + s2_len + 1) * sizeof(char));
+	if (!join)
+		return (NULL);
+	ft_strlcpy(join, s1, s1_len + 1);
+	ft_strlcpy((join + s1_len), s2, s2_len + 1);
+	return (join);
 }
 
 char	*ft_substr(char const *s, unsigned int start, size_t len)

@@ -20,6 +20,11 @@
 char    *ft_strdup(const char *s);
 char    **ft_split(char const *s, char c);
 char	*ft_strchr(const char *s, int c);
+char	*ft_substr(char const *s, unsigned int start, size_t len);
+void	*ft_calloc(size_t count, size_t size);
+char	*ft_strjoin(char const *s1, char const *s2);
+int     ft_isalnum(int i);
+int     ft_atoi(const char *str);
 
 typedef struct s_cmd
 {
@@ -51,8 +56,8 @@ typedef struct s_vars
 typedef struct  s_env
 {
     int             index;
-    char            *var;
-    char            *name;
+    char            *vari;
+    char            *key;
     char            *val;
     struct s_env    *next;
     struct s_env    *prev;
