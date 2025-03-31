@@ -32,10 +32,7 @@ int new_token(int *start, int *len, t_vars *vars)
     new_token->next = NULL;
     new_token->str = malloc(sizeof(char) * (*len + 1));
     if (!new_token->str)
-    {
-        free(new_token);
-        return (1);
-    }
+        return (free(new_token), 1);
     i = 0;
     while(i < *len)
     {
@@ -43,20 +40,21 @@ int new_token(int *start, int *len, t_vars *vars)
         i++;
     }
     new_token->str[i] = '\0';
-    // printf("new_token : %s\n", new_token->str);
     if (join_list(&vars->tokens, new_token))
-        return (1);
+        return (free(new_token), 1);
     *start += *len;
     *len = 0;
     return (0);
 }
 
-void clean_space(int i, int j, t_vars *vars)
+int clean_space(int i, int j, t_vars *vars)
 {
     const char  *space = " \t\n\r\v\f";
     char        c;
     char        *input;
 
+    if (vars == NULL || vars->args == NULL)
+        return (1);
     input = ft_strdup(vars->args);
     while (input[i + j])
     {  
@@ -69,10 +67,26 @@ void clean_space(int i, int j, t_vars *vars)
             if (input[i + j] == c)
                 j++;
         }
+        else if (input[i + j] == 60 || input[i + j] == 62 || input[i + j] == 124)
+        {
+            if (j > 0)
+            {
+                if (new_token(&i, &j, vars))
+                    return (free(input), 1);
+            }
+            j++;
+            if (input[i + j] == 60 || input[i + j] == 62)
+                j++;
+            new_token(&i, &j, vars);
+            continue;
+        }
         else if (ft_strchr(space, input[i + j]))
         {
             if (j > 0)
-                new_token(&i, &j, vars);
+            {
+                if (new_token(&i, &j, vars))
+                    return (free(input), 1);
+            }
             while (input[i + j] && ft_strchr(space, input[i + j]))
                 i++;
             continue;
@@ -82,29 +96,27 @@ void clean_space(int i, int j, t_vars *vars)
         if (!input[i + j] && j > 0)
         {
             if (new_token(&i, &j, vars))
-            {
-
-                free(input);
-                return ;
-            }
+                return (free(input), 1);
             break;
         }
     }
+    return (0);
 }
-void    parsing_input(t_vars *vars)
+
+int    parsing_input(t_vars *vars)
 {
     vars->args = readline("minishell$ ");
     add_history(vars->args);
-    clean_space(0, 0, vars);
+    if (clean_space(0, 0, vars))
+        return (1);
+    return (0);
 }
 
-int    init_env(t_vars *vars, char **env)
+int    init_env(int i, t_vars *vars, char **env)
 {
     t_env   *head;
     t_env   *current;
-    int i;
-
-    i = 0;
+    
     if (!env || !*env || !vars)
         return (1);
     head = (t_env *)malloc(sizeof(t_env));
@@ -117,17 +129,106 @@ int    init_env(t_vars *vars, char **env)
         current->val = ft_strdup(env[i]);
         current->var = ft_split((env[i]), '=')[0];
         current->name = ft_split((env[i]), '=')[1];
-        current->index = i;
+        current->index = i++;
         current->next = (t_env *)malloc(sizeof(t_env));
         if (!current->next)
             return (1);
         current->next->prev = current;
         current = current->next;
-        i++;
     }
     current->next = NULL;
     vars->env_list = head;
     return (0);
+}
+
+void    free_env(t_vars *vars)
+{
+    t_env   *current;
+    t_env   *next;
+
+    current = vars->env_list;
+    while (current)
+    {
+        next = current->next;
+        free(current->val);
+        free(current->var);
+        free(current->name);
+        free(current);
+        current = next;
+    }
+}
+void    free_list(t_list *list)
+{
+    t_list  *current;
+    t_list  *next;
+
+    current = list;
+    while (current)
+    {
+        next = current->next;
+        free(current->str);
+        free(current);
+        current = next;
+    }
+}
+
+char    *expand_quote(char *str, char *arg, int *i, int *j, t_vars *vars)
+{
+    char    quote;
+    char    *tmp;
+
+    tmp = ft_strjoin(str, ft_substr(arg, i, j));
+    quote = arg[*j++];
+    while (arg[*j] && arg[*j] != quote)
+    {
+        if (arg[*j] == 36) // 36 is $
+        {
+           
+        }
+        else
+            tmp = ft_strjoin(tmp, arg[*j]);
+        *j++;
+    }
+    free(str);
+    str = tmp;
+    return (str);
+}
+
+void    expand_input(int start, int end, t_vars *vars)
+{
+    t_list  *current;
+    char    *tmp;
+
+    tmp = ft_calloc(1, sizeof(char));
+    current = vars->tokens;
+    while (current)
+    {
+        while (1)
+        {
+            if (current->str[end] == 34 || current->str[end] == 39) //34 is " 39 is '
+                tmp = expand_quote(tmp, current->str, &start, &end, vars);
+            // else if (current->str[i] == 36) //36 is $
+            
+            // else if (current->str[i])
+             
+            else
+                end++;
+        }
+        current = current->next;
+    }
+}
+
+void    read_tokens(t_vars *vars)
+{
+    t_list  *current;
+
+    int i = 0;
+    current = vars->tokens;
+    while (current)
+    {
+        printf("Token %d: %s\n", i++ , current->str);
+        current = current->next;
+    }
 }
 
 int main (int ac, char **av, char **env)
@@ -137,11 +238,18 @@ int main (int ac, char **av, char **env)
     (void)ac;
     (void)av;
     vars.args = NULL;
-    vars.tokens = NULL;
-    init_env(&vars, env);
-    while(vars.end)
-    {
+    if (init_env(0, &vars, env))
+        return (free_env(&vars), 0);
+    while(1)
+    {    
+        vars.tokens = NULL;
         parsing_input(&vars);
+        read_tokens(&vars);
+        expand_input(0, 0, &vars);
+        // read_tokens(&vars);
+        free_list(vars.tokens);
     }
+    free_env(&vars);
+    free(vars.args);
     return (0);
 }
