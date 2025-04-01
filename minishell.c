@@ -152,7 +152,51 @@ void free_env(t_vars *vars)
         next = current->next;
         free(current->key);
         free(current->vari);
-        free(current->val);
+        free(current->val);int init_env(int i, t_vars *vars, char **env)
+        {
+            t_env *head;
+            t_env *current;
+        
+            if (!env || !*env || !vars)
+                return (1);
+            head = (t_env *)malloc(sizeof(t_env));
+            if (!head)
+                return (1);
+            current = head;
+            current->prev = NULL;
+            while (env[i])
+            {
+                current->vari = ft_strdup(env[i]);
+                current->key = ft_split((env[i]), '=')[0];
+                current->val = ft_split((env[i]), '=')[1];
+                current->index = i++;
+                current->next = (t_env *)mallo…v));
+                if (!current->next)
+                    return (1);
+                current->next->prev = current;
+                current = current->next;
+            }
+            current->next = NULL;
+            vars->env_list = head;
+            return (0);
+        }
+        
+        void free_env(t_vars *vars)
+        {
+            t_env *current;
+            t_env *next;
+        
+            current = vars->env_list;
+            while (current)
+            {
+                next = current->next;
+                free(current->key);
+                free(current->vari);
+                free(current->val);
+                free(current);
+                current = next;
+            }
+        }
         free(current);
         current = next;
     }
@@ -185,11 +229,10 @@ char *get_env_val(char *arg, int *i, int *j, t_vars *vars)
     current = vars->env_list;
     while (current)
     {
-        if (ft_strcmp(current->key, key) == 0)
+        if (ft_strncmp(current->key, key, ft_strlen(current->key)) == 0)
         {
             env_val = ft_strdup(current->val);
-            free(key);
-            return (env_val);
+            break ;
         }
         current = current->next;
     }

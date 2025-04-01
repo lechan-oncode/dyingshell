@@ -101,24 +101,6 @@ void	*ft_calloc(size_t count, size_t size)
 	return (m);
 }
 
-int ft_strncmp(const char *s1, const char *s2, size_t n)
-{
-    size_t i;
-
-    if (n == 0)
-        return 0;
-
-    for (i = 0; i < n; i++)
-    {
-        if (s1[i] != s2[i])
-            return (unsigned char)s1[i] - (unsigned char)s2[i];
-        if (s1[i] == '\0')
-            return 0;
-    }
-
-    return 0;
-}
-
 char	*ft_strjoin(char const *s1, char const *s2)
 {
 	size_t	s1_len;
@@ -239,44 +221,162 @@ char	*ft_strdup(const char *str)
 	return (dup);
 }
 
+int ft_strncmp(const char *s1, const char *s2, size_t n)
+{
+    size_t i;
+
+    if (n == 0)
+        return 0;
+    for (i = 0; i < n; i++)
+    {
+        if (s1[i] != s2[i])
+            return (unsigned char)s1[i] - (unsigned char)s2[i];
+        if (s1[i] == '\0')
+            return 0;
+    }
+    return 0;
+}
+typedef struct s_vars
+{
+    int             end;
+    struct s_env    *env_list;
+    struct s_list   *tokens;
+    char            *args;
+}   t_vars;
+
+typedef struct  s_env
+{
+    int             index;
+    char            *vari;
+    char            *key;
+    char            *val;
+    struct s_env    *next;
+    struct s_env    *prev;
+}   t_env;
+
+int init_env(int i, t_vars *vars, char **env)
+{
+    t_env *head;
+    t_env *current;
+
+    if (!env || !*env || !vars)
+        return (1);
+    head = (t_env *)malloc(sizeof(t_env));
+    if (!head)
+        return (1);
+    current = head;
+    current->prev = NULL;
+    while (env[i])
+    {
+        current->vari = ft_strdup(env[i]);
+        current->key = ft_split((env[i]), '=')[0];
+        current->val = ft_split((env[i]), '=')[1];
+        current->index = i++;
+        current->next = (t_env *)malloc(sizeof(t_env));
+        if (!current->next)
+            return (1);
+        current->next->prev = current;
+        current = current->next;
+    }
+    current->next = NULL;
+    vars->env_list = head;
+    return (0);
+}
+
 char *get_env_val(char *arg, int *i, int *j, t_vars *vars)
 {
     char *env_val;
     char *key;
     t_env *current;
 
-    env_val = ft_calloc(1, sizeof(char));
+    printf("[%d]\n", *j);
+
+    printf("11here\n");
+    printf("%s\n", arg);
+    printf("arg[%d]: %c\n", *j, arg[*j]);
     while (arg[*j] == 95 || ft_isalnum(arg[*j])) 
-        (*j)++;
-    key = ft_substr(arg, *i, *j - *i);
-    printf("key: %s\n", key);
-	current = vars->env_list;
-    while (current)
     {
-        if (ft_strncmp(current->key, key, ft_strlen(current->key)) == 0)
+        printf("%d\n", *j);
+        (*j)++;
+    }
+    if (*j == 0)
+    {
+        printf("j is 0\n");
+        return (ft_calloc(1, sizeof(char)));
+    }
+    printf("22here\n");
+    key = ft_substr(arg, *i, *j - *i);
+    printf("i = %d, j = %d\n", *i, *j);
+    if (key == NULL)
+        return (free(key), env_val);
+    printf("key: %s\n", key);
+    current = vars->env_list;
+    while (current->key)
+    {
+        if (ft_strncmp(key, current->key, ft_strlen(current->key)) == 0)
         {
             env_val = ft_strdup(current->val);
-            break ;
+            printf("found env_val: %s\n", env_val);
+            return (env_val);
         }
+        // printf("key: %s\n", current->key);
         current = current->next;
     }
     free(key);
-    return (env_val);
+    return (ft_calloc(1, sizeof(char)));
 }
 
+void    read_env(t_vars *vars)
+{
+    t_env *current;
 
+    current = vars->env_list;
+    while (current)
+    {
+        printf("key: %s, val: %s\n", current->key, current->val);
+        current = current->next;
+    }
+}
+
+// int main(int ac, char **av, char **env)
+// {
+//     t_vars vars;
+//     char *env_val;
+//     int i = 0;
+//     int j = 0;
+
+//     (void)ac;
+//     (void)av;
+//     init_env(0, &vars, env);
+//     // read_env(&vars);
+//     env_val = get_env_val("HOME;", &i, &j, &vars);
+//     printf("env_val: %s\n", env_val);
+//     printf("i: %d j: %d\n", i, j);
+//     char *str1;
+//     char *str2;
+//     char *str3;
+//     str1 = ft_strdup("abc");
+//     str2 = ft_strdup("123");
+//     printf("str1: %s\n", str1);
+//     printf("str2: %s\n", str2);
+//     str3 = ft_strjoin(str1, str2);
+//     printf("%s",str3);
+//     free(vars.env_list->key);
+//     free(vars.env_list->val);
+//     free(vars.env_list->vari);
+//     free(vars.env_list);
+//     return (0);
+// }
 
 int main()
 {
-	int i = 0;
-	int j = 0;
-	char *arg;
-
-	char *str;
-	arg = ft_strdup("___123ABCdjfkhs{}");
-	str = get_env_val(arg, &i, &j);
-	printf("str: %s\n", str);
-	printf("i: %d\n", i);
-	printf("j: %d\n", j);
-	return (0);
+    char *str1;
+    char *str2;
+    char *str3;
+    str1 = ft_strdup("abc");
+    str2 = ft_strdup("123");
+    printf("str1: %s\n", str1);
+    printf("str2: %s\n", str2);
+    printf("%s", ft_strjoin(str1, str2));
+    return (0);
 }
