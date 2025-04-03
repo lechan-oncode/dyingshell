@@ -289,41 +289,20 @@ char *get_env_val(char *arg, int *i, int *j, t_vars *vars)
     char *key;
     t_env *current;
 
-    printf("[%d]\n", *j);
-
-    printf("11here\n");
-    printf("%s\n", arg);
-    printf("arg[%d]: %c\n", *j, arg[*j]);
     while (arg[*j] == 95 || ft_isalnum(arg[*j])) 
-    {
-        printf("%d\n", *j);
         (*j)++;
-    }
     if (*j == 0)
-    {
-        printf("j is 0\n");
         return (ft_calloc(1, sizeof(char)));
-    }
-    printf("22here\n");
     key = ft_substr(arg, *i, *j - *i);
-    printf("i = %d, j = %d\n", *i, *j);
-    if (key == NULL)
-        return (free(key), env_val);
-    printf("key: %s\n", key);
+	*i = *j;
     current = vars->env_list;
     while (current->key)
     {
         if (ft_strncmp(key, current->key, ft_strlen(current->key)) == 0)
-        {
-            env_val = ft_strdup(current->val);
-            printf("found env_val: %s\n", env_val);
-            return (env_val);
-        }
-        // printf("key: %s\n", current->key);
+            return (free(key), ft_strdup(current->val));
         current = current->next;
     }
-    free(key);
-    return (ft_calloc(1, sizeof(char)));
+    return (free(key), ft_calloc(1, sizeof(char)));
 }
 
 void    read_env(t_vars *vars)
@@ -338,45 +317,22 @@ void    read_env(t_vars *vars)
     }
 }
 
-// int main(int ac, char **av, char **env)
-// {
-//     t_vars vars;
-//     char *env_val;
-//     int i = 0;
-//     int j = 0;
-
-//     (void)ac;
-//     (void)av;
-//     init_env(0, &vars, env);
-//     // read_env(&vars);
-//     env_val = get_env_val("HOME;", &i, &j, &vars);
-//     printf("env_val: %s\n", env_val);
-//     printf("i: %d j: %d\n", i, j);
-//     char *str1;
-//     char *str2;
-//     char *str3;
-//     str1 = ft_strdup("abc");
-//     str2 = ft_strdup("123");
-//     printf("str1: %s\n", str1);
-//     printf("str2: %s\n", str2);
-//     str3 = ft_strjoin(str1, str2);
-//     printf("%s",str3);
-//     free(vars.env_list->key);
-//     free(vars.env_list->val);
-//     free(vars.env_list->vari);
-//     free(vars.env_list);
-//     return (0);
-// }
-
-int main()
+int main(int ac, char **av, char **env)
 {
-    char *str1;
-    char *str2;
-    char *str3;
-    str1 = ft_strdup("abc");
-    str2 = ft_strdup("123");
-    printf("str1: %s\n", str1);
-    printf("str2: %s\n", str2);
-    printf("%s", ft_strjoin(str1, str2));
+    t_vars vars;
+    char *env_val;
+    int i = 0;
+    int j = 0;
+
+    (void)ac;
+    (void)av;
+    init_env(0, &vars, env);
+    // read_env(&vars);
+    env_val = get_env_val("", &i, &j, &vars);
+    printf("env_val: %s\n", env_val);
+	printf("i = %d, j = %d\n", i, j);
+	char *join;
+	join = ft_strjoin(env_val, "!");
+	printf("|join:%s|\n", join);
     return (0);
 }

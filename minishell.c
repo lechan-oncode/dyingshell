@@ -152,51 +152,7 @@ void free_env(t_vars *vars)
         next = current->next;
         free(current->key);
         free(current->vari);
-        free(current->val);int init_env(int i, t_vars *vars, char **env)
-        {
-            t_env *head;
-            t_env *current;
-        
-            if (!env || !*env || !vars)
-                return (1);
-            head = (t_env *)malloc(sizeof(t_env));
-            if (!head)
-                return (1);
-            current = head;
-            current->prev = NULL;
-            while (env[i])
-            {
-                current->vari = ft_strdup(env[i]);
-                current->key = ft_split((env[i]), '=')[0];
-                current->val = ft_split((env[i]), '=')[1];
-                current->index = i++;
-                current->next = (t_env *)mallo…v));
-                if (!current->next)
-                    return (1);
-                current->next->prev = current;
-                current = current->next;
-            }
-            current->next = NULL;
-            vars->env_list = head;
-            return (0);
-        }
-        
-        void free_env(t_vars *vars)
-        {
-            t_env *current;
-            t_env *next;
-        
-            current = vars->env_list;
-            while (current)
-            {
-                next = current->next;
-                free(current->key);
-                free(current->vari);
-                free(current->val);
-                free(current);
-                current = next;
-            }
-        }
+        free(current->val);
         free(current);
         current = next;
     }
@@ -216,66 +172,100 @@ void free_list(t_list *list)
     }
 }
 
-char *get_env_val(char *arg, int *i, int *j, t_vars *vars)
+char    *get_spec_env_move(char *arg, int *i, int *j, t_vars *vars)
 {
-    char *env_val;
+    // char *env_val;
+    // char *key;
+    (void)vars;
+    // t_env *current;
+
+    if (arg[*i] == '?')
+    {
+        (*j)++;
+        *i = *j;
+        return ("error code");
+    }
+    return (NULL);
+}
+char *get_env_move(char *arg, int *i, int *j, t_vars *vars)
+{
+    // char *env_val;
     char *key;
     t_env *current;
 
-    env_val = ft_calloc(1, sizeof(char));
+    if  (arg[*i] == '?')
+        return (get_spec_env_move(arg, i, j, vars));
     while (arg[*j] == 95 || ft_isalnum(arg[*j])) 
         (*j)++;
+    if (*j == 0)
+        return (ft_calloc(1, sizeof(char)));
     key = ft_substr(arg, *i, *j - *i);
+	*i = *j;
     current = vars->env_list;
-    while (current)
+    while (current->key)
     {
-        if (ft_strncmp(current->key, key, ft_strlen(current->key)) == 0)
-        {
-            env_val = ft_strdup(current->val);
-            break ;
-        }
+        if (ft_strncmp(key, current->key, ft_strlen(current->key)) == 0)
+            return (free(key), ft_strdup(current->val));
         current = current->next;
     }
-    free(key);
-    return (env_val);
+    return (free(key), ft_calloc(1, sizeof(char)));
 }
+
 char *ft_join_quote_expand_move(char *tmp, char *arg, int *i, int *j, t_vars *vars)
 {
     char *result;
     char *env_val;
     char *substr;
-    int  move;
 
+    printf("11check arg: %s tmp: %s i: %d , j: %d\n",arg,  tmp, *i, *j);
     if (!tmp || !arg)
         return (NULL);
-    substr = ft_substr(arg, *i, *j - *i);
-    result = ft_strjoin(tmp, substr);
+    if (*j > 0)
+    {
+        printf("j>0, join found: %s\n", tmp);
+        substr = ft_substr(arg, *i, *j - *i);
+        result = ft_strjoin(tmp, substr);
+        free(substr);
+        free(tmp);
+    }
+    // else
+    //     result = ft_calloc(1, sizeof(char));
     (*j)++;
     *i = *j;
-    free(substr);
-    free(tmp);
-    if (arg[*i - 1] == '$')
+    printf("22check arg: %s tmp: %s i: %d , j: %d\n",arg,  result, *i, *j);
+    if (arg[*i - 1] == 36)
     {
-        env_val = get_env_val(arg, *i, *j, vars);
-        return (free(env_val), ft_strjoin(result, env_val));
+        printf("dollar found: %c\n", arg[*i - 1]);
+        env_val = get_env_move(arg, i, j, vars);
+        tmp = ft_strjoin(result, env_val);
+        free(env_val);
+        free(result);
+        return (tmp);
     }
-    return (result);
+    else
+    {
+        printf("no dollar found: %c\n", arg[*i - 1]);
+        return (result);
+    }
 }
+
 char *expand_quote(char *str, char *arg, int *i, int *j, t_vars *vars)
 {
     char quote;
-    char *tmp;
 
     quote = arg[*j];
-    str = ft_join_move(str, vars, i, j, 1);
+    printf("quote saved: %c\n", quote);
+    str = ft_join_quote_expand_move(str, arg, i, j, vars);
     while (arg[*j] && arg[*j] != quote)
     {
-        if (arg[*j] == 36) // 36 is $
-            str = ft_join_move(str, vars, i, j, 1);
+        if (arg[*j] == 36 && quote == 34)
+        {
+            str = ft_join_quote_expand_move(str, arg, i, j, vars);
+            continue ;
+        }
         (*j)++;
     }
-    free(str);
-    str = tmp;
+    str = ft_join_quote_expand_move(str, arg, i, j, vars);
     return (str);
 }
 
@@ -286,19 +276,30 @@ void expand_input(int start, int end, t_vars *vars)
 
     tmp = ft_calloc(1, sizeof(char));
     current = vars->tokens;
+    printf("current->str: %s\n", current->str);
+    printf("start: %d\n", start);
+    printf("end: %d\n", end);
     while (current)
     {
-        while (1)
+        while (current->str[end])
         {
-            if (current->str[end] == 34 || current->str[end] == 39) // 34 is " 39 is '
+            if (current->str[end] == 34 || current->str[end] == 39) // 34 is "
+            {
+                printf("quote found: %c\n", current->str[end]);
                 tmp = expand_quote(tmp, current->str, &start, &end, vars);
-            // else if (current->str[i] == 36) //36 is $
-
-            // else if (current->str[i])
-
+            }
+            else if (current->str[end] == 36)
+            {
+                printf("dollar found: %c\n", current->str[end]);
+                tmp = ft_join_quote_expand_move(tmp, current->str, &start, &end, vars);
+            }
             else
                 end++;
+            printf("loop end: %d\n", end);
         }
+        printf("end of loop: %d\n", end);
+        tmp = ft_join_quote_expand_move(tmp, current->str, &start, &end, vars);
+        current->str = tmp;
         current = current->next;
     }
 }
@@ -323,6 +324,7 @@ int main(int ac, char **av, char **env)
     (void)ac;
     (void)av;
     vars.args = NULL;
+    vars.exit_status = 0;
     if (init_env(0, &vars, env))
         return (free_env(&vars), 0);
     while (1)
@@ -331,7 +333,7 @@ int main(int ac, char **av, char **env)
         parsing_input(&vars);
         read_tokens(&vars);
         expand_input(0, 0, &vars);
-        // read_tokens(&vars);
+        read_tokens(&vars);
         free_list(vars.tokens);
     }
     free_env(&vars);

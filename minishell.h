@@ -23,8 +23,10 @@ char	*ft_strchr(const char *s, int c);
 char	*ft_substr(char const *s, unsigned int start, size_t len);
 void	*ft_calloc(size_t count, size_t size);
 char	*ft_strjoin(char const *s1, char const *s2);
+size_t	ft_strlen(const char *s);
 int     ft_isalnum(int i);
 int     ft_atoi(const char *str);
+int     ft_strncmp(const char *s1, const char *s2, size_t n);
 
 typedef struct s_cmd
 {
@@ -51,6 +53,7 @@ typedef struct s_vars
     struct s_env    *env_list;
     struct s_list   *tokens;
     char            *args;
+    int             exit_status;
 }   t_vars;
 
 typedef struct  s_env
