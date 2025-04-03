@@ -157,6 +157,7 @@ void free_env(t_vars *vars)
         current = next;
     }
 }
+
 void free_list(t_list *list)
 {
     t_list *current;
@@ -174,10 +175,7 @@ void free_list(t_list *list)
 
 char    *get_spec_env_move(char *arg, int *i, int *j, t_vars *vars)
 {
-    // char *env_val;
-    // char *key;
     (void)vars;
-    // t_env *current;
 
     if (arg[*i] == '?')
     {
@@ -189,7 +187,6 @@ char    *get_spec_env_move(char *arg, int *i, int *j, t_vars *vars)
 }
 char *get_env_move(char *arg, int *i, int *j, t_vars *vars)
 {
-    // char *env_val;
     char *key;
     t_env *current;
 
@@ -217,36 +214,27 @@ char *ft_join_quote_expand_move(char *tmp, char *arg, int *i, int *j, t_vars *va
     char *env_val;
     char *substr;
 
-    printf("11check arg: %s tmp: %s i: %d , j: %d\n",arg,  tmp, *i, *j);
     if (!tmp || !arg)
         return (NULL);
+    result = ft_calloc(1, sizeof(char));
     if (*j > 0)
     {
-        printf("j>0, join found: %s\n", tmp);
         substr = ft_substr(arg, *i, *j - *i);
         result = ft_strjoin(tmp, substr);
         free(substr);
         free(tmp);
     }
-    // else
-    //     result = ft_calloc(1, sizeof(char));
     (*j)++;
     *i = *j;
-    printf("22check arg: %s tmp: %s i: %d , j: %d\n",arg,  result, *i, *j);
     if (arg[*i - 1] == 36)
     {
-        printf("dollar found: %c\n", arg[*i - 1]);
         env_val = get_env_move(arg, i, j, vars);
         tmp = ft_strjoin(result, env_val);
         free(env_val);
         free(result);
         return (tmp);
     }
-    else
-    {
-        printf("no dollar found: %c\n", arg[*i - 1]);
-        return (result);
-    }
+    return (result);
 }
 
 char *expand_quote(char *str, char *arg, int *i, int *j, t_vars *vars)
@@ -254,7 +242,6 @@ char *expand_quote(char *str, char *arg, int *i, int *j, t_vars *vars)
     char quote;
 
     quote = arg[*j];
-    printf("quote saved: %c\n", quote);
     str = ft_join_quote_expand_move(str, arg, i, j, vars);
     while (arg[*j] && arg[*j] != quote)
     {
@@ -269,37 +256,31 @@ char *expand_quote(char *str, char *arg, int *i, int *j, t_vars *vars)
     return (str);
 }
 
-void expand_input(int start, int end, t_vars *vars)
+void expand_input(t_vars *vars)
 {
     t_list *current;
     char *tmp;
+    int start;
+    int end;
 
-    tmp = ft_calloc(1, sizeof(char));
     current = vars->tokens;
-    printf("current->str: %s\n", current->str);
-    printf("start: %d\n", start);
-    printf("end: %d\n", end);
     while (current)
-    {
+    {   
+        start = 0;
+        end = 0;
+        tmp = ft_calloc(1, sizeof(char));
         while (current->str[end])
         {
-            if (current->str[end] == 34 || current->str[end] == 39) // 34 is "
-            {
-                printf("quote found: %c\n", current->str[end]);
+            if (current->str[end] == 34 || current->str[end] == 39)
                 tmp = expand_quote(tmp, current->str, &start, &end, vars);
-            }
             else if (current->str[end] == 36)
-            {
-                printf("dollar found: %c\n", current->str[end]);
                 tmp = ft_join_quote_expand_move(tmp, current->str, &start, &end, vars);
-            }
             else
                 end++;
-            printf("loop end: %d\n", end);
         }
-        printf("end of loop: %d\n", end);
         tmp = ft_join_quote_expand_move(tmp, current->str, &start, &end, vars);
-        current->str = tmp;
+        free(current->str);
+        current->str = ft_strdup(tmp);
         current = current->next;
     }
 }
@@ -332,7 +313,7 @@ int main(int ac, char **av, char **env)
         vars.tokens = NULL;
         parsing_input(&vars);
         read_tokens(&vars);
-        expand_input(0, 0, &vars);
+        expand_input(&vars);
         read_tokens(&vars);
         free_list(vars.tokens);
     }
