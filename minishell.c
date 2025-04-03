@@ -312,7 +312,6 @@ int main(int ac, char **av, char **env)
     {
         vars.tokens = NULL;
         parsing_input(&vars);
-        read_tokens(&vars);
         expand_input(&vars);
         read_tokens(&vars);
         free_list(vars.tokens);

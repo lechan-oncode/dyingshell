@@ -38,11 +38,22 @@ typedef struct s_cmd
     int             pid;
 }   t_cmd;
 
+typedef enum e_type
+{
+    TYPE_CMD,
+    TYPE_ARG,
+    TYPE_PIPE,
+    TYPE_REDIRECT_IN,
+    TYPE_REDIRECT_OUT,
+    TYPE_APPEND,
+    TYPE_HEREDOC,
+}   t_type;
+
 typedef struct s_list
 {
     char            *str;
     int             index;
-    int             type;
+    t_type         type;
     struct s_list   *prev;
     struct s_list   *next;
 }   t_list;
