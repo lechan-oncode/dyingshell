@@ -40,20 +40,27 @@ typedef struct s_cmd
 
 typedef enum e_type
 {
-    TYPE_CMD,
-    TYPE_ARG,
     TYPE_PIPE,
     TYPE_REDIRECT_IN,
     TYPE_REDIRECT_OUT,
     TYPE_APPEND,
     TYPE_HEREDOC,
+    TYPE_CMD,
+    TYPE_FILE
 }   t_type;
+
+typedef struct s_ast
+{
+    t_type         type;
+    char            **argv;
+    struct s_ast    *left;
+    struct s_ast    *right;
+}   t_ast;
 
 typedef struct s_list
 {
     char            *str;
     int             index;
-    t_type         type;
     struct s_list   *prev;
     struct s_list   *next;
 }   t_list;
@@ -63,6 +70,7 @@ typedef struct s_vars
     int             end;
     struct s_env    *env_list;
     struct s_list   *tokens;
+    struct s_ast    *ast;
     char            *args;
     int             exit_status;
 }   t_vars;

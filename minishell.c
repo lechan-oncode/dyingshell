@@ -29,6 +29,7 @@ int new_token(int *start, int *len, t_vars *vars)
     new_token = (t_list *)malloc(sizeof(t_list));
     if (!new_token)
         return (1);
+    new_token->prev = NULL;
     new_token->next = NULL;
     new_token->str = malloc(sizeof(char) * (*len + 1));
     if (!new_token->str)
@@ -285,6 +286,51 @@ void expand_input(t_vars *vars)
     }
 }
 
+int new_ast(char node, t_vars *vars)
+{
+    t_list *new_ast;
+    int i;
+
+    if (node == NULL || vars == NULL)
+        return (1);
+    new_ast = (t_list *)malloc(sizeof(t_ast));
+    if (!new_ast)
+        return (1);
+    new_ast->prev = NULL;
+    new_ast->next = NULL;
+    new_ast->str = malloc(sizeof(char) * (*len + 1));
+    if (!new_token->str)
+        return (free(new_token), 1);
+    i = 0;
+    while (i < *len)
+    {
+        new_token->str[i] = vars->args[*start + i];
+        i++;
+    }
+    new_token->str[i] = '\0';
+    if (join_list(&vars->tokens, new_token))
+        return (free(new_token), 1);
+    *start += *len;
+    *len = 0;
+    return (0);
+}
+
+void make_ast(t_vars *vars)
+{
+    t_ast   *current;
+    t_list  *token;
+    int     merge_token;
+
+    token = vars->tokens;
+    current = vars->ast;
+    while (token)
+    {
+        merge_token = 0;
+        if (token->str[0] != 124 && token->str[0] != 60 && token->str[0] != 62)
+        token = token->next;
+    }
+}
+
 void read_tokens(t_vars *vars)
 {
     t_list *current;
@@ -313,6 +359,7 @@ int main(int ac, char **av, char **env)
         vars.tokens = NULL;
         parsing_input(&vars);
         expand_input(&vars);
+        make_ast(&vars);
         read_tokens(&vars);
         free_list(vars.tokens);
     }
