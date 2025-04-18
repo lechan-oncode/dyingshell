@@ -52,7 +52,7 @@ typedef enum e_type
 typedef struct s_ast
 {
     enum e_type     type;
-    char            *argv;
+    char            **argv;
     struct s_ast    *left;
     struct s_ast    *right;
 }   t_ast;

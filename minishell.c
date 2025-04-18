@@ -285,52 +285,7 @@ void expand_input(t_vars *vars)
         current = current->next;
     }
 }
-/*
-int new_ast(char node, t_vars *vars)
-{
-    t_list *new_ast;
-    int i;
 
-    if (node == NULL || vars == NULL)
-        return (1);
-    new_ast = (t_list *)malloc(sizeof(t_ast));
-    if (!new_ast)
-        return (1);
-    new_ast->prev = NULL;
-    new_ast->next = NULL;
-    new_ast->str = malloc(sizeof(char) * (*len + 1));
-    if (!new_token->str)
-        return (free(new_token), 1);
-    i = 0;
-    while (i < *len)
-    {
-        new_token->str[i] = vars->args[*start + i];
-        i++;
-    }
-    new_token->str[i] = '\0';
-    if (join_list(&vars->tokens, new_token))
-        return (free(new_token), 1);
-    *start += *len;
-    *len = 0;
-    return (0);
-}
-
-void make_ast(t_vars *vars)
-{
-    t_ast   *current;
-    t_list  *token;
-    int     merge_token;
-
-    token = vars->tokens;
-    current = vars->ast;
-    while (token)
-    {
-        merge_token = 0;
-        if (token->str[0] != 124 && token->str[0] != 60 && token->str[0] != 62)
-        token = token->next;
-    }
-}
-*/
 void read_tokens(t_vars *vars)
 {
     t_list *current;
@@ -367,35 +322,41 @@ void init_lst_type(t_list *list)
         current = current->next;
     }
 }
-char *join_cmd_token(t_list **current)
+char **join_cmd_token(t_list **current)
 {
-    char *cmd;
-    char *tmp;
     int i;
+    int j;
+    t_list *tmp;
+    char **cmd;
 
     if (!current || !*current)
         return (NULL);
-    cmd = ft_calloc(1, sizeof(char));
+    i = 0;
+    j = 0;
+    tmp = *current;        
     while (*current && (*current)->type == TYPE_CMD)
     {
-        tmp = ft_strjoin(cmd, (*current)->str);
-        free(cmd);
-        cmd = tmp;
-        i = 0;
-        while ((*current)->str[i])
-            i++;
-        (*current)->str[i] = '\0';
+        i++;
         *current = (*current)->next;
     }
-    printf("cmd: %s\n", cmd);
+    cmd = (char **)malloc(sizeof(char *) * (i + 1));
+    if (!cmd)
+        return (NULL);
+    while (i > j)
+    {
+        cmd[j] = ft_strdup(tmp->str);
+        tmp = tmp->next;
+        j++;
+    }
+    cmd[j] = NULL;
     return (cmd);
 }
 void make_ast(t_vars *vars)
 {
     t_list  *current;
     t_ast   *new_node;
-    // t_ast   *pipe_line;
-    // t_ast   *branch;
+    t_ast   *pipe_line;
+    t_ast   *branch;
 
     init_lst_type(vars->tokens);
     current = vars->tokens;
@@ -403,35 +364,44 @@ void make_ast(t_vars *vars)
     {
         new_node = (t_ast *)malloc(sizeof(t_ast));
         if (!new_node)
-        return ;
+            return ;
         new_node->argv = NULL;
         new_node->left = NULL;
         new_node->right = NULL;
         if (current->type == TYPE_CMD)
         {
             new_node->argv = join_cmd_token(&current);
-            // new_node->type = TYPE_CMD;
-            // if (current->next && current->next->type == TYPE_PIPE)
-            //     new_node->right = (t_ast *)malloc(sizeof(t_ast));
-            // else
-            //     new_node->right = NULL;
+            branch = new_node;
         }
-        // else if (current->type == TYPE_PIPE)
-        // {
-        //     new_node->type = TYPE_PIPE;
-        //     new_node->left = (t_ast *)malloc(sizeof(t_ast));
-        //     new_node->right = (t_ast *)malloc(sizeof(t_ast));
-        //     make_ast(vars);
-        // } 
-        // else 
-        // {
-
-        // }
-        // current = current->next;
+        else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
+        {
+            new_node->left = branch;
+            new_node->right = NULL;
+            new_node->type = current->type;
+        }
+        else if (current->type == TYPE_PIPE)
+        {
+            new_node->type = TYPE_PIPE;
+            if (pipe_line == NULL)
+            {
+                new_node->left = branch;
+                new_node->right = NULL;
+                pipe_line = new_node;
+            }
+            else
+            {
+                pipe_line->right = branch;
+                new_node->left = pipe_line;
+                new_node->right = NULL;
+                pipe_line = new_node;
+            }
+            branch = NULL;
+        }
+        free(new_node);
+        if (current != NULL)
+            current = current->next;    
     }
     vars->ast = new_node;
-    printf("11ast: %s\n", new_node->argv);
-    
 }
 
 int main(int ac, char **av, char **env)
@@ -451,14 +421,6 @@ int main(int ac, char **av, char **env)
         expand_input(&vars);
         make_ast(&vars);
         read_tokens(&vars);
-        printf("22ast: %s\n", vars.ast->argv);
-        char **split;
-        split = ft_split(vars.ast->argv, '\0');
-        while (split && *split)
-        {
-            printf("split: %s\n", *split);
-            split++;
-        }
         free_list(vars.tokens);
     }
     
