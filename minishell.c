@@ -351,57 +351,118 @@ char **join_cmd_token(t_list **current)
     cmd[j] = NULL;
     return (cmd);
 }
+
+void print_ast(t_ast *node, int depth)
+{
+    if (!node)
+        return;
+
+    // Print indentation based on depth
+    for (int i = 0; i < depth; i++)
+        printf("  ");
+
+    // Print the node type
+    printf("Node Type: %d\n", node->type);
+
+    // Print the arguments if they exist
+    if (node->argv)
+    {
+        for (int i = 0; node->argv[i]; i++)
+        {
+            for (int j = 0; j < depth; j++)
+                printf("  ");
+            printf("Arg[%d]: %s\n", i, node->argv[i]);
+        }
+    }
+
+    // Recursively print the left and right children
+    print_ast(node->left, depth + 1);
+    print_ast(node->right, depth + 1);
+}
+
 void make_ast(t_vars *vars)
 {
     t_list  *current;
     t_ast   *new_node;
     t_ast   *pipe_line;
     t_ast   *branch;
+    t_ast   *temp;
 
     init_lst_type(vars->tokens);
     current = vars->tokens;
+    branch = NULL;
+    pipe_line = NULL;
     while (current)
     {
-        new_node = (t_ast *)malloc(sizeof(t_ast));
-        if (!new_node)
-            return ;
-        new_node->argv = NULL;
-        new_node->left = NULL;
-        new_node->right = NULL;
-        if (current->type == TYPE_CMD)
+        if (current->type == TYPE_CMD && branch == NULL)
         {
+            new_node = (t_ast *)malloc(sizeof(t_ast));
+            if (!new_node)
+                return ;
+            new_node->argv = NULL;
+            new_node->left = NULL;
+            new_node->right = NULL;
             new_node->argv = join_cmd_token(&current);
             branch = new_node;
         }
+        if (current->type == TYPE_CMD && branch != NULL)
+        {
+            temp = branch;
+            new_node = (t_ast *)malloc(sizeof(t_ast));
+            if (!new_node)
+                return ;
+            new_node->right = NULL;
+            new_node->left = NULL;
+            new_node->type = TYPE_FILE;
+            new_node->argv = (char **)malloc(sizeof(char *) * 2);
+            new_node->argv[0] = ft_strdup(current->str);
+            new_node->argv[1] = NULL;
+            while (temp->right)
+                temp = temp->right;
+            temp->right = new_node;
+        }
         else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
         {
-            new_node->left = branch;
+            new_node = (t_ast *)malloc(sizeof(t_ast));
+            if (!new_node)
+                return ;
+            new_node->argv = NULL;  
             new_node->right = NULL;
+            new_node->left = branch;
             new_node->type = current->type;
+            branch = new_node;
         }
         else if (current->type == TYPE_PIPE)
         {
+            new_node = (t_ast *)malloc(sizeof(t_ast));
+            if (!new_node)
+                return ;
+            new_node->right = NULL;
             new_node->type = TYPE_PIPE;
             if (pipe_line == NULL)
-            {
                 new_node->left = branch;
-                new_node->right = NULL;
-                pipe_line = new_node;
-            }
             else
             {
                 pipe_line->right = branch;
                 new_node->left = pipe_line;
-                new_node->right = NULL;
-                pipe_line = new_node;
             }
+            pipe_line = new_node;
             branch = NULL;
         }
-        free(new_node);
         if (current != NULL)
             current = current->next;    
     }
-    vars->ast = new_node;
+    if (pipe_line)
+    {
+        pipe_line->right = branch;
+        vars->ast = pipe_line;
+    }
+    else
+        vars->ast = branch;
+    // if (vars->ast)
+    //     printf("AST created successfully\n");
+    // else
+    //     printf("Failed to create AST\n");
 }
 
 int main(int ac, char **av, char **env)
@@ -420,7 +481,7 @@ int main(int ac, char **av, char **env)
         parsing_input(&vars);
         expand_input(&vars);
         make_ast(&vars);
-        read_tokens(&vars);
+        // read_tokens(&vars);
         free_list(vars.tokens);
     }
     
