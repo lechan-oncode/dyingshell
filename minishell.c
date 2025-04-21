@@ -157,14 +157,45 @@ void free_env(t_vars *vars)
         free(current);
         current = next;
     }
+    vars->env_list = NULL;
+
+    if (vars->env_arr)
+    {
+        while (vars->env_arr && *vars->env_arr)
+        {
+            free(*vars->env_arr);
+            vars->env_arr++;
+        }
+        free(vars->env_arr);
+        vars->env_arr = NULL;
+    }
 }
 
-void free_list(t_list *list)
+void free_ast(t_ast *node)
+{
+    if (!node)
+        return;
+    free_ast(node->left);
+    free_ast(node->right);
+    if (node->argv)
+    {
+        while (node->argv && *node->argv)
+        {
+            free(*node->argv);
+            node->argv++;
+        }
+        free(node->argv);
+    }
+    free(node);
+}
+
+void free_list(t_vars *vars)
 {
     t_list *current;
     t_list *next;
 
-    current = list;
+    free(vars->args);
+    current = vars->tokens;
     while (current)
     {
         next = current->next;
@@ -172,6 +203,7 @@ void free_list(t_list *list)
         free(current);
         current = next;
     }
+    vars->tokens = NULL;
 }
 
 char    *get_spec_env_move(char *arg, int *i, int *j, t_vars *vars)
@@ -282,6 +314,7 @@ void expand_input(t_vars *vars)
         tmp = ft_join_quote_expand_move(tmp, current->str, &start, &end, vars);
         free(current->str);
         current->str = ft_strdup(tmp);
+        free(tmp);
         current = current->next;
     }
 }
@@ -528,28 +561,36 @@ void    make_ast(t_vars *vars)
 void arr_env_list(t_vars *vars)
 {
     t_env *current;
-    int i;
+    t_env *temp;
 
-  
-    if (!vars)
-        return ;
+    int i;
+    if (!vars || !vars->env_list)
+        return;
+
     current = vars->env_list;
     i = 0;
+    // Count the number of environment variables
     while (current)
     {
-        current = current->next;
         i++;
+        current = current->next;
     }
+
     vars->env_arr = (char **)malloc(sizeof(char *) * (i + 1));
     if (!vars->env_arr)
-        return ;
-    current = vars->env_list;
+        return;
+    temp = vars->env_list;
     i = 0;
-    while (current->vari)
+
+    // Populate the env_arr array
+    while (temp)
     {
-        vars->env_arr[i] = ft_strdup(current->vari);
-        current = current->next;
-        i++;
+        if (temp->vari) // Ensure vari is valid
+        {
+            vars->env_arr[i] = ft_strdup(temp->vari);
+            i++;
+        }
+        temp = temp->next;
     }
     vars->env_arr[i] = NULL;
 }
@@ -571,47 +612,59 @@ char *ft_getenv(char *key, t_env *env_list)
     return (NULL);
 }
 
-void execute_command(t_ast *node, t_vars *vars)
+void run_exec(char *valid_path, t_ast *node, t_vars *vars)
+{
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        if (execve(valid_path, node->argv, vars->env_arr) == -1)
+        {
+            perror("minishell");
+            exit(1);
+        }
+    }
+    else if (pid < 0)
+        perror("minishell: fork failed");
+    else
+        waitpid(pid, &vars->exit_status, 0);
+}
+
+void execute_cmd(t_ast *node, t_vars *vars)
+{
+    char **path_list;
+    char *path;
+    char *valid_path;
+    
+    if (!node || !node->argv)
+        return ;
+    printf("Executing command: %s\n", node->argv[0]);
+    path_list = ft_split(ft_getenv("PATH", vars->env_list), ':');
+    while  (*path_list)
+    {
+        path = ft_strjoin(*path_list, "/");
+        valid_path = ft_strjoin(path, node->argv[0]);
+        if (access(valid_path, X_OK) == 0)
+        {
+            printf("Executable found: %s\n", ft_strjoin(path, node->argv[0]));
+            run_exec(valid_path, node, vars);
+            break;
+        }
+        free(valid_path);
+        free(path);
+        path_list++;
+    }
+}
+
+void execute(t_ast *node, t_vars *vars)
 {
     printf("Executing command...\n");
     if (!node)
         return;
     if (node->type == TYPE_CMD)
-    {
-        char **path_list;
-        char *path;
-        char *valid_path;
-        
-        printf("Executing command: %s\n", node->argv[0]);
-        path_list = ft_split(ft_getenv("PATH", vars->env_list), ':');
-        while  (*path_list)
-        {
-            path = ft_strjoin(*path_list, "/");
-            valid_path = ft_strjoin(path, node->argv[0]);
-            if (access(valid_path, X_OK) == 0)
-            {
-                printf("Executable found: %s\n", ft_strjoin(path, node->argv[0]));
-                break;
-            }
-            free(valid_path);
-            free(path);
-            path_list++;
-        }
-        // printf("Executable not found in: %s\n", *path_list);
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            if (execve(valid_path, node->argv, vars->env_arr) == -1)
-            {
-                perror("minishell");
-                exit(1);
-            }
-        }
-        else if (pid < 0)
-            perror("minishell: fork failed");
-        else
-            waitpid(pid, &vars->exit_status, 0);
-    }
+        // if (is_builtin(node->argv[0]))
+        //     execute_builtin(node, vars);
+        // else
+        execute_cmd(node, vars);
     /*
     else if (node->type == TYPE_PIPE)
     {
@@ -709,12 +762,11 @@ int main(int ac, char **av, char **env)
 
     (void)ac;
     (void)av;
-    vars.env_arr = NULL;
-    vars.exit_status = 0;
     if (init_env(0, &vars, env))
         return (free_env(&vars), 0);
     while (1)
     {
+        vars.env_arr = NULL;
         vars.args = NULL;
         vars.pipe_line = NULL;
         vars.branch = NULL;
@@ -725,11 +777,11 @@ int main(int ac, char **av, char **env)
         make_ast(&vars);
         // print_ast(vars.ast, 0);
         arr_env_list(&vars);
-        execute_command(vars.ast, &vars);
+        execute(vars.ast, &vars);
         // read_tokens(&vars);
-        free_list(vars.tokens);
+        free_list(&vars);
+        free_ast(vars.ast);
     }
     free_env(&vars);
-    free(vars.args);
     return (0);
 }
