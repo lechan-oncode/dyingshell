@@ -234,3 +234,20 @@ char	*ft_strdup(const char *str)
 		dup[str_len] = str[str_len];
 	return (dup);
 }
+
+// char *ft_getenv(char *key, t_env *env_list)
+// {
+//     t_env *current;
+
+//     if (!key || !env_list)
+//         return (NULL);
+
+//     current = env_list;
+//     while (current)
+//     {
+//         if (ft_strncmp(key, current->key, ft_strlen(key) + 1) == 0)
+//             return (current->val);
+//         current = current->next;
+//     }
+//     return (NULL);
+// }
