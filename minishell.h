@@ -16,17 +16,6 @@
 # include <sys/types.h>
 # include <sys/wait.h>
 
-// Add libft function prototypes
-char    *ft_strdup(const char *s);
-char    **ft_split(char const *s, char c);
-char	*ft_strchr(const char *s, int c);
-char	*ft_substr(char const *s, unsigned int start, size_t len);
-void	*ft_calloc(size_t count, size_t size);
-char	*ft_strjoin(char const *s1, char const *s2);
-size_t	ft_strlen(const char *s);
-int     ft_isalnum(int i);
-int     ft_atoi(const char *str);
-int     ft_strncmp(const char *s1, const char *s2, size_t n);
 // char *ft_getenv(char *key, t_env *env_list);
 
 // typedef struct s_cmd
@@ -88,5 +77,22 @@ typedef struct  s_env
     struct s_env    *next;
     struct s_env    *prev;
 }   t_env;
+
+// Add libft function prototypes
+char    *ft_strdup(const char *s);
+char    **ft_split(char const *s, char c);
+char	*ft_strchr(const char *s, int c);
+char	*ft_substr(char const *s, unsigned int start, size_t len);
+void	*ft_calloc(size_t count, size_t size);
+char	*ft_strjoin(char const *s1, char const *s2);
+size_t	ft_strlen(const char *s);
+int     ft_isalnum(int i);
+int     ft_atoi(const char *str);
+int     ft_strncmp(const char *s1, const char *s2, size_t n);
+
+int     builtin_echo(char **args);
+int     builtin_env(t_vars *vars);
+int     builtin_pwd(t_vars *vars);
+
 
 # endif

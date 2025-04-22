@@ -1,7 +1,7 @@
 NAME = minishell
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror
-SRCS = minishell.c libft.c
+SRCS = minishell.c libft.c builtin_echo.c
 OBJS = $(SRCS:.c=.o)
 READLINE = -lreadline
 

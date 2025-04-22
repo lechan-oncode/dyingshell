@@ -179,10 +179,11 @@ void free_ast(t_ast *node)
     free_ast(node->right);
     if (node->argv)
     {
-        while (node->argv && *node->argv)
+        char **tmp = node->argv;
+        while (*tmp)
         {
-            free(*node->argv);
-            node->argv++;
+            free(*tmp);
+            tmp++;
         }
         free(node->argv);
     }
@@ -611,6 +612,33 @@ char *ft_getenv(char *key, t_env *env_list)
     }
     return (NULL);
 }
+void execute_builtin(t_ast *node, t_vars *vars)
+{
+    if (ft_strncmp(node->argv[0], "echo", 5) == 0)
+        builtin_echo(node->argv);
+    // else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
+    //     ft_cd(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "pwd", 4) == 0)
+        builtin_pwd(vars);
+    // else if (ft_strncmp(node->argv[0], "export", 7) == 0)
+    //     ft_export(node->argv, vars);
+    // else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
+    //     ft_unset(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "env", 4) == 0)
+        builtin_env(vars);
+    // else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
+    //     ft_exit(vars);
+}
+
+int is_builtin(char *cmd)
+{
+    if (ft_strncmp(cmd, "echo", 5) == 0 || ft_strncmp(cmd, "cd", 3) == 0 ||
+        ft_strncmp(cmd, "pwd", 4) == 0 || ft_strncmp(cmd, "export", 7) == 0 ||
+        ft_strncmp(cmd, "unset", 6) == 0 || ft_strncmp(cmd, "env", 4) == 0 ||
+        ft_strncmp(cmd, "exit", 5) == 0)
+        return (1);
+    return (0);
+}
 
 void run_exec(char *valid_path, t_ast *node, t_vars *vars)
 {
@@ -637,7 +665,7 @@ void execute_cmd(t_ast *node, t_vars *vars)
     
     if (!node || !node->argv)
         return ;
-    printf("Executing command: %s\n", node->argv[0]);
+    // printf("Executing command: %s\n", node->argv[0]);
     path_list = ft_split(ft_getenv("PATH", vars->env_list), ':');
     while  (*path_list)
     {
@@ -645,7 +673,7 @@ void execute_cmd(t_ast *node, t_vars *vars)
         valid_path = ft_strjoin(path, node->argv[0]);
         if (access(valid_path, X_OK) == 0)
         {
-            printf("Executable found: %s\n", ft_strjoin(path, node->argv[0]));
+            // printf("Executable found: %s\n", ft_strjoin(path, node->argv[0]));
             run_exec(valid_path, node, vars);
             break;
         }
@@ -657,15 +685,16 @@ void execute_cmd(t_ast *node, t_vars *vars)
 
 void execute(t_ast *node, t_vars *vars)
 {
-    printf("Executing command...\n");
+    // printf("Executing command...\n");
     if (!node)
         return;
     if (node->type == TYPE_CMD)
-        // if (is_builtin(node->argv[0]))
-        //     execute_builtin(node, vars);
-        // else
-        execute_cmd(node, vars);
-    /*
+    {
+        if (is_builtin(node->argv[0]))
+            execute_builtin(node, vars);
+        else
+            execute_cmd(node, vars);
+    }
     else if (node->type == TYPE_PIPE)
     {
         int pipe_fd[2];
@@ -682,7 +711,7 @@ void execute(t_ast *node, t_vars *vars)
             close(pipe_fd[0]); // Close read end
             dup2(pipe_fd[1], STDOUT_FILENO); // Redirect stdout to pipe
             close(pipe_fd[1]);
-            execute_command(node->left, vars);
+            execute(node->left, vars);
             exit(0);
         }
         else if (pid < 0)
@@ -697,7 +726,7 @@ void execute(t_ast *node, t_vars *vars)
             close(pipe_fd[1]); // Close write end
             dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
             close(pipe_fd[0]);
-            execute_command(node->right, vars);
+            execute(node->right, vars);
             exit(0);
         }
         else if (pid < 0)
@@ -711,8 +740,7 @@ void execute(t_ast *node, t_vars *vars)
         waitpid(-1, &vars->exit_status, 0);
         waitpid(-1, &vars->exit_status, 0);
     }
-    */
-    /*
+
     else if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
              node->type == TYPE_APPEND || node->type == TYPE_HEREDOC)
     {
@@ -725,7 +753,7 @@ void execute(t_ast *node, t_vars *vars)
             fd = open(node->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
         else
             return; // Handle HEREDOC separately if needed
-
+        printf("fd: %d node type: %d\n", fd, node->type);
         if (fd == -1)
         {
             perror("minishell: open failed");
@@ -740,7 +768,7 @@ void execute(t_ast *node, t_vars *vars)
             else
                 dup2(fd, STDOUT_FILENO);
             close(fd);
-            execute_command(node->left, vars);
+            execute(node->left, vars);
             exit(0);
         }
         else if (pid < 0)
@@ -753,7 +781,6 @@ void execute(t_ast *node, t_vars *vars)
             waitpid(pid, &vars->exit_status, 0);
         }
     }
-    */
 }
 
 int main(int ac, char **av, char **env)

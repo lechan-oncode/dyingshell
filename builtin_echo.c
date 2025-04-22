@@ -3,113 +3,69 @@
 /*                                                        :::      ::::::::   */
 /*   builtin_echo.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: lechan <lechan@student.42kl.edu.my>        +#+  +:+       +#+        */
+/*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/03/22 17:20:59 by lechan           ###   ########.fr       */
+/*   Updated: 2025/04/22 12:12:28 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../includes/minishell.h"
+# include "minishell.h"
 
-/*
-Built-in command: echo. Writes arguments to standard output.
--  Newline flag is set to 1 if the -n flag is not present and 0 if it is
-   present.
-   (Normally a newline is printed at the end of the echo command)
-Returns command status (0 for success, 1 for failure).
-*/
-int	builtin_echo(char **args, t_vars *vars)
+int	builtin_echo(char **args)
 {
-	int	i;
-	int	newline;
-	int	cmdcode;
+	int i;
+
+	i = 1;
+	if (!args || !*args)
+		return (1);
+	if (args[i] && ft_strncmp(args[i], "-n", 2) == 0)
+		i++;
+	while (args[i])
+		printf("%s", args[i++]);
+	if (args[1] && ft_strncmp(args[1], "-n", 2) == 0)
+		return (0);
+	else
+		printf("\n");
+	return (0);
+}
+
+int	builtin_pwd(t_vars *vars)
+{
+	char	*cwd;
+	int		cmdcode;
 
 	cmdcode = 0;
-	if (!args || !args[0])
+	if (!vars || !vars->env_arr)
 	{
 		cmdcode = 1;
-		vars->error_code = cmdcode;
+		vars->exit_status = cmdcode;
 		return (cmdcode);
 	}
-	i = 1;
-	newline = 1;
-	if (print_exit_status(args, vars, &i, &newline))
-	{
-		vars->error_code = cmdcode;
-		return (cmdcode);
-	}
-	if (args[i] && ft_strcmp(args[i], "-n") == 0)
-	{
-		newline = 0;
-		i++;
-	}
-	process_echo_args(args, i, newline);
-	vars->error_code = cmdcode;
+	// cwd = get_env_val("PWD", vars->env_arr);
+	cwd = getcwd(NULL, 0);
+	printf("%s\n", cwd);
+	vars->exit_status = cmdcode;
 	return (cmdcode);
 }
 
-/*
-Process and print echo command arguments.
-Adds a space after each argument if there is more than one argument.
-Adds newline if needed.
-Returns 0 on success.
-*/
-int	process_echo_args(char **args, int start, int nl_flag)
+int builtin_env(t_vars *vars)
 {
 	int	i;
-	int	j;
+	int	cmdcode;
 
-	i = start;
-	while (args[i])
+	i = 0;
+	cmdcode = 0;
+	if (!vars || !vars->env_arr)
 	{
-		j = 0;
-		while (args[i][j])
-		{
-			write(1, &args[i][j], 1);
-			j++;
-		}
-		if (args[i + 1])
-			write(1, " ", 1);
+		cmdcode = 1;
+		return (cmdcode);
+	}
+	while (vars->env_arr[i])
+	{
+		printf("%s\n", vars->env_arr[i]);
 		i++;
 	}
-	if (nl_flag)
-		write(1, "\n", 1);
-	return (0);
-}
-
-/*
-Special handler for when echo is called with $? as argument.
-Directly prints the error code from vars struct.
-- Respects -n flag for newline control
-- Uses write() for output to be consistent with process_echo_args
-Returns 1 if $? was handled, 0 otherwise.
-*/
-int	print_exit_status(char **args, t_vars *vars, int *i, int *newline)
-{
-	char	*error_str;
-	int		j;
-
-	if (args[*i] && ft_strcmp(args[*i], "-n") == 0)
-	{
-		*newline = 0;
-		(*i)++;
-	}
-	if (args[*i] && ft_strcmp(args[*i], "$?") == 0 && !args[*i + 1])
-	{
-		error_str = ft_itoa(vars->error_code);
-		if (!error_str)
-			return (0);
-		j = 0;
-		while (error_str[j])
-		{
-			write(1, &error_str[j], 1);
-			j++;
-		}
-		if (*newline)
-			write(1, "\n", 1);
-		ft_safefree((void **)&error_str);
-		return (1);
-	}
-	return (0);
+	vars->exit_status = cmdcode;
+	return (cmdcode);
 }

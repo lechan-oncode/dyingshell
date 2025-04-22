@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   builtin_env.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bleow <bleow@student.42kl.edu.my>          +#+  +:+       +#+        */
+/*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:43 by lechan            #+#    #+#             */
-/*   Updated: 2025/03/22 02:28:56 by bleow            ###   ########.fr       */
+/*   Updated: 2025/04/22 11:46:24 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,11 +29,11 @@ int	builtin_env(t_vars *vars)
 		cmdcode = 1;
 		return (cmdcode);
 	}
-	while (vars->env[i])
+	while (vars->env_arr[i])
 	{
-		printf("%s\n", vars->env[i]);
+		printf("%s\n", vars->env_arr[i]);
 		i++;
 	}
-	vars->error_code = cmdcode;
+	vars->exit_status = cmdcode;
 	return (cmdcode);
 }
