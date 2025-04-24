@@ -1,5 +1,0 @@
-cat << END
-sometext: $HOME
-$USER
-moretext
-END

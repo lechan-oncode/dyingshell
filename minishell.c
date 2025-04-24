@@ -744,44 +744,38 @@ void execute(t_ast *node, t_vars *vars)
     else if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
              node->type == TYPE_APPEND || node->type == TYPE_HEREDOC)
     {
-        int fd;
+        int fd = -1;
+        
         if (node->type == TYPE_REDIRECT_IN)
-            fd = open(node->argv[0], O_RDONLY);
+            fd = open(node->right->argv[0], O_RDONLY);
         else if (node->type == TYPE_REDIRECT_OUT)
-            fd = open(node->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         else if (node->type == TYPE_APPEND)
-            fd = open(node->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
-        else
-            return; // Handle HEREDOC separately if needed
-        printf("fd: %d node type: %d\n", fd, node->type);
-        if (fd == -1)
-        {
-            perror("minishell: open failed");
-            return;
-        }
-
+            fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
         pid_t pid = fork();
-        if (pid == 0)
-        {
+            
+        if (pid == 0) {
+            // Child process
             if (node->type == TYPE_REDIRECT_IN)
                 dup2(fd, STDIN_FILENO);
             else
                 dup2(fd, STDOUT_FILENO);
             close(fd);
-            execute(node->left, vars);
-            exit(0);
+            execute(node->left, vars);  // Execute the command after redirection
+            exit(0);  // Exit child process
         }
-        else if (pid < 0)
+        else if (pid < 0) 
         {
             perror("minishell: fork failed");
         }
-        else
+        else 
         {
-            close(fd);
-            waitpid(pid, &vars->exit_status, 0);
+            // Parent process
+            waitpid(pid, &vars->exit_status, 0);  // Wait for the child process to finish
         }
     }
 }
+          
 
 int main(int ac, char **av, char **env)
 {
