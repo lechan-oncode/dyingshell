@@ -76,7 +76,7 @@ int clean_space(int i, int j, t_vars *vars)
                     return (free(input), 1);
             }
             j++;
-            if (input[i + j] == 60 || input[i + j] == 62)
+            if (input[i + j] == input[i + j - 1] && input[i + j] != 124)
                 j++;
             new_token(&i, &j, vars);
             continue;
@@ -358,7 +358,55 @@ void init_lst_type(t_list *list)
     }
 }
 
-void add_cmd_lst(t_list **tokens)
+void add_file_lst(t_list **current)
+{
+    t_list *add_fil;
+
+    add_fil = malloc(sizeof(t_list));
+    if (!add_fil)
+        return ;
+    add_fil->str = NULL;
+    add_fil->type = TYPE_FILE;
+    add_fil->prev = (*current);
+    add_fil->next = (*current)->next;
+    if ((*current)->next)
+        (*current)->next->prev = add_fil;
+    (*current)->next = add_fil;
+}
+
+void add_cmd_lst_head(t_list **current, t_list **token)
+{
+    t_list *add_exec;
+
+    add_exec = malloc(sizeof(t_list));
+    if (!add_exec)
+        return;
+    add_exec->str = NULL;
+    add_exec->type = TYPE_CMD;
+    add_exec->prev = NULL;
+    add_exec->next = (*current);
+    (*current)->prev = add_exec;
+    *token = *current;
+}
+
+void add_cmd_lst_pipe(t_list **current)
+{
+    t_list *add_exec;
+
+    add_exec = malloc(sizeof(t_list));
+    if (!add_exec)
+        return;
+    add_exec->str = NULL;
+    add_exec->type = TYPE_CMD;
+    add_exec->prev = (*current);
+    add_exec->next = (*current)->next;
+    if ((*current)->next)
+        (*current)->next->prev = add_exec;
+    (*current)->next = add_exec;
+    (*current) = add_exec->next;
+}
+
+void add_cmd_fil_lst(t_list **tokens)
 {
     t_list *current;
     t_list *add_exec;
@@ -367,34 +415,17 @@ void add_cmd_lst(t_list **tokens)
     while (current)
     {
         if (current->prev == NULL)
-        {
-            add_exec = (t_list *)malloc(sizeof(t_list));
-            add_exec->str = NULL;
-            add_exec->type = TYPE_CMD;
-            add_exec->prev = NULL;
-            add_exec->next = current;
-            current->prev = add_exec;
-            *tokens = add_exec;
-        }
+            add_cmd_lst_head(&current, &tokens);
         if (current->type == TYPE_PIPE)
-        {
-            add_exec = (t_list *)malloc(sizeof(t_list));
-            if (!add_exec)
-                return ;
-            add_exec->str = NULL;
-            add_exec->type = TYPE_CMD;
-            add_exec->prev = current;
-            current->next = add_exec;
-            add_exec->next = NULL;
-            if (current->next == NULL)
-            {
-                add_exec->next = current->next;
-                current->next->prev = add_exec;
-            }
-        }
-        current = current->next;
+            add_cmd_lst_pipe(&current);
+        if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT
+                || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
+            add_fil_lst(&current);
+        else
+            current = current->next;
     }
 }
+
 
 char **join_cmd_token(t_list **current)
 {
@@ -405,12 +436,13 @@ char **join_cmd_token(t_list **current)
 
     if (!current || !*current)
         return (NULL);
-    i = 1;
+    i = 0;
     j = 0;
-    tmp = *current;        
-    while ((*current)->next && (*current)->next->type == TYPE_CMD)
+    tmp = (*current)->next;        
+    while ((*current)->next && (*current)->next->type != TYPE_PIPE)
     {
-        i++;
+        if ((*current)->type == TYPE_ARGV)
+            i++;
         *current = (*current)->next;
     }
     cmd = (char **)malloc(sizeof(char *) * (i + 1));
@@ -584,7 +616,7 @@ void ast_cmd(t_list **current, t_ast **branch)
     new_node->left = NULL;
     new_node->right = NULL;
     new_node->type = TYPE_CMD;
-    new_node->argv = join_cmd_token(current);
+    // new_node->argv = join_cmd_token(current);
     *branch = new_node;
 }
 
@@ -599,7 +631,7 @@ void    make_ast(t_vars *vars)
     {
         if (current->type == TYPE_CMD && vars->branch == NULL)
             ast_cmd(&current, &vars->branch);
-        else if (current->type == TYPE_CMD && vars->branch != NULL)
+        else if (current->type == TYPE_FILE)
             ast_file(&current, &vars->branch);
         else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT 
                 || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
@@ -851,11 +883,11 @@ int main(int ac, char **av, char **env)
         init_lst_type(vars.tokens);
         printf("Tokens:\n");
         read_tokens(&vars);
-        add_cmd_lst(&vars.tokens);
+        add_cmd_fil_lst(&vars.tokens);
         printf("Input: %s\n", vars.args);
         read_tokens(&vars);
-        // make_ast(&vars);
-        // print_ast(vars.ast, 0);
+        make_ast(&vars);
+        print_ast(vars.ast, 0);
         arr_env_list(&vars);
         // execute(vars.ast, &vars);
         // read_tokens(&vars);
