@@ -1,0 +1,13 @@
+minishell$             ast_file(current, &vars->branch);
+REDIRECT_OUT (>) Node
+  Arg[0]: REDIRECT
+Left:
+  COMMAND Node
+    Arg[0]: ast_file(current,
+    Arg[1]: &vars-
+  Right:
+    FILE Node
+      Arg[0]: &vars-
+Right:
+  FILE Node
+    Arg[0]: branch);

@@ -1,0 +1,17 @@
+minishell$         current = current->next;  
+REDIRECT_OUT (>) Node
+  Arg[0]: REDIRECT
+Left:
+  COMMAND Node
+    Arg[0]: current
+    Arg[1]: =
+    Arg[2]: current-
+  Right:
+    FILE Node
+      Arg[0]: =
+    Right:
+      FILE Node
+        Arg[0]: current-
+Right:
+  FILE Node
+    Arg[0]: next;

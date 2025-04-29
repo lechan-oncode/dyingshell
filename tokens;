@@ -1,0 +1,55 @@
+minishell$     while (current != NULL)
+COMMAND Node
+  Arg[0]: while
+  Arg[1]: (current
+  Arg[2]: !=
+  Arg[3]: NULL)
+Right:
+  FILE Node
+    Arg[0]: (current
+  Right:
+    FILE Node
+      Arg[0]: !=
+    Right:
+      FILE Node
+        Arg[0]: NULL)
+minishell$     {
+COMMAND Node
+  Arg[0]: {
+minishell$         if (current->type == TYPE_CMD && vars->branch == NULL)
+REDIRECT_OUT (>) Node
+  Arg[0]: REDIRECT
+Left:
+  REDIRECT_OUT (>) Node
+    Arg[0]: REDIRECT
+  Left:
+    COMMAND Node
+      Arg[0]: if
+      Arg[1]: (current-
+    Right:
+      FILE Node
+        Arg[0]: (current-
+  Right:
+    FILE Node
+      Arg[0]: type
+    Right:
+      FILE Node
+        Arg[0]: ==
+      Right:
+        FILE Node
+          Arg[0]: TYPE_CMD
+        Right:
+          FILE Node
+            Arg[0]: &&
+          Right:
+            FILE Node
+              Arg[0]: vars-
+Right:
+  FILE Node
+    Arg[0]: branch
+  Right:
+    FILE Node
+      Arg[0]: ==
+    Right:
+      FILE Node
+        Arg[0]: NULL)

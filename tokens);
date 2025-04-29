@@ -1,0 +1,17 @@
+minishell$     current = vars->tokens;
+REDIRECT_OUT (>) Node
+  Arg[0]: REDIRECT
+Left:
+  COMMAND Node
+    Arg[0]: current
+    Arg[1]: =
+    Arg[2]: vars-
+  Right:
+    FILE Node
+      Arg[0]: =
+    Right:
+      FILE Node
+        Arg[0]: vars-
+Right:
+  FILE Node
+    Arg[0]: tokens;

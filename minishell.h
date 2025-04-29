@@ -36,6 +36,7 @@ typedef enum e_type
     TYPE_APPEND,
     TYPE_HEREDOC,
     TYPE_CMD,
+    TYPE_ARGV,
     TYPE_FILE
 }   t_type;
 
@@ -43,6 +44,7 @@ typedef struct s_ast
 {
     enum e_type     type;
     char            **argv;
+    struct s_ast    *prev;
     struct s_ast    *left;
     struct s_ast    *right;
 }   t_ast;

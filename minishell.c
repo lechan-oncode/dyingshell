@@ -353,7 +353,45 @@ void init_lst_type(t_list *list)
             else
                 current->type = TYPE_REDIRECT_OUT;
         else
-            current->type = TYPE_CMD;
+            current->type = TYPE_ARGV;
+        current = current->next;
+    }
+}
+
+void add_cmd_lst(t_list **tokens)
+{
+    t_list *current;
+    t_list *add_exec;
+
+    current = *tokens;
+    while (current)
+    {
+        if (current->prev == NULL)
+        {
+            add_exec = (t_list *)malloc(sizeof(t_list));
+            add_exec->str = NULL;
+            add_exec->type = TYPE_CMD;
+            add_exec->prev = NULL;
+            add_exec->next = current;
+            current->prev = add_exec;
+            *tokens = add_exec;
+        }
+        if (current->type == TYPE_PIPE)
+        {
+            add_exec = (t_list *)malloc(sizeof(t_list));
+            if (!add_exec)
+                return ;
+            add_exec->str = NULL;
+            add_exec->type = TYPE_CMD;
+            add_exec->prev = current;
+            current->next = add_exec;
+            add_exec->next = NULL;
+            if (current->next == NULL)
+            {
+                add_exec->next = current->next;
+                current->next->prev = add_exec;
+            }
+        }
         current = current->next;
     }
 }
@@ -458,44 +496,61 @@ void print_ast(t_ast *node, int depth)
 void ast_redirect(t_ast **branch, t_list *current)
 {
     t_ast *new_node;
+    t_ast *tmp;
 
     new_node = (t_ast *)malloc(sizeof(t_ast));
     if (!new_node)
         return ;
     new_node->argv = NULL;
-    new_node->left = *branch;
-    new_node->right = NULL;
     new_node->argv = (char **)malloc(sizeof(char *) * 2);
     new_node->argv[0] = ft_strdup("REDIRECT");
     new_node->argv[1] = NULL;
     new_node->type = current->type;
-    *branch = new_node;
+    new_node->prev = NULL;
+    if (*branch == NULL)
+        *branch = new_node;
+    else if ((*branch)->type == 5)
+    {
+        new_node->right = (*branch);
+        (*branch) = new_node;
+    }   
+    else 
+    {
+        tmp = *branch;
+        while (tmp->left != NULL)
+            tmp = tmp->left;
+        tmp = new_node->right;
+        new_node = tmp->prev->left;
+    }
 }
 
 void ast_pipe(t_ast **pipe_line, t_ast **branch)
 {
     t_ast *new_node;
+    t_ast *tmp;
 
     new_node = (t_ast *)malloc(sizeof(t_ast));
     if (!new_node)
         return ;
-    new_node->right = NULL;
+    new_node->left = NULL;
     new_node->type = TYPE_PIPE;
     new_node->argv = (char **)malloc(sizeof(char *) * 2);
     new_node->argv[0] = ft_strdup("PIPE");
     new_node->argv[1] = NULL;
+    new_node->right = *branch;
     if (*pipe_line == NULL)
-        new_node->left = *branch;
+        *pipe_line = new_node;
     else
     {
-        (*pipe_line)->right = *branch;
-        new_node->left = *pipe_line;
+        tmp = *pipe_line;
+        while (tmp->left != NULL)
+            tmp = tmp->left;
+        tmp->left = new_node;
     }
-    *pipe_line = new_node;
     *branch = NULL;
 }
 
-void ast_file(t_list *current, t_ast **branch)
+void ast_file(t_list **current, t_ast **branch)
 {
     t_ast *new_node;
     t_ast *temp;
@@ -509,14 +564,15 @@ void ast_file(t_list *current, t_ast **branch)
     new_node->right = NULL;
     new_node->type = TYPE_FILE;
     new_node->argv = (char **)malloc(sizeof(char *) * 2);
-    new_node->argv[0] = ft_strdup(current->str);
+    new_node->argv[0] = ft_strdup((*current)->str);
     new_node->argv[1] = NULL;
-    while (temp->right)
-        temp = temp->right;
-    temp->right = new_node;
+    while (temp->left != NULL)
+        temp = temp->left;
+    temp->left = new_node;
+    new_node->prev = temp;
 }
 
-void ast_cmd(t_list *current, t_ast **branch)
+void ast_cmd(t_list **current, t_ast **branch)
 {
     t_ast *new_node;
 
@@ -524,10 +580,11 @@ void ast_cmd(t_list *current, t_ast **branch)
     if (!new_node)
         return ;
     new_node->argv = NULL;
+    new_node->prev = NULL;
     new_node->left = NULL;
     new_node->right = NULL;
     new_node->type = TYPE_CMD;
-    new_node->argv = join_cmd_token(&current);
+    new_node->argv = join_cmd_token(current);
     *branch = new_node;
 }
 
@@ -536,13 +593,14 @@ void    make_ast(t_vars *vars)
     t_list  *current;
 
     init_lst_type(vars->tokens);
+    add_cmd_lst(&vars->tokens);
     current = vars->tokens;
     while (current != NULL)
     {
         if (current->type == TYPE_CMD && vars->branch == NULL)
-            ast_cmd(current, &vars->branch);
+            ast_cmd(&current, &vars->branch);
         else if (current->type == TYPE_CMD && vars->branch != NULL)
-            ast_file(current, &vars->branch);
+            ast_file(&current, &vars->branch);
         else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT 
                 || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
             ast_redirect(&vars->branch, current);
@@ -550,9 +608,13 @@ void    make_ast(t_vars *vars)
             ast_pipe(&vars->pipe_line, &vars->branch);
         current = current->next;  
     }
-    if (vars->pipe_line)
+    if (vars->pipe_line != NULL)
     {
-        vars->pipe_line->right = vars->branch;
+        t_ast *tmp;
+        tmp = vars->pipe_line;
+        while (tmp->left)
+            tmp = tmp->left;
+        tmp->left = vars->branch;
         vars->ast = vars->pipe_line;
     }
     else
@@ -745,34 +807,26 @@ void execute(t_ast *node, t_vars *vars)
              node->type == TYPE_APPEND || node->type == TYPE_HEREDOC)
     {
         int fd = -1;
-        
+        int stdin_cpy;
+        int stdout_cpy;
+
+        stdin_cpy = dup(STDIN_FILENO);
+        stdout_cpy = dup(STDOUT_FILENO);
         if (node->type == TYPE_REDIRECT_IN)
             fd = open(node->right->argv[0], O_RDONLY);
         else if (node->type == TYPE_REDIRECT_OUT)
             fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         else if (node->type == TYPE_APPEND)
             fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
-        pid_t pid = fork();
-            
-        if (pid == 0) {
-            // Child process
-            if (node->type == TYPE_REDIRECT_IN)
-                dup2(fd, STDIN_FILENO);
-            else
-                dup2(fd, STDOUT_FILENO);
-            close(fd);
-            execute(node->left, vars);  // Execute the command after redirection
-            exit(0);  // Exit child process
-        }
-        else if (pid < 0) 
-        {
-            perror("minishell: fork failed");
-        }
-        else 
-        {
-            // Parent process
-            waitpid(pid, &vars->exit_status, 0);  // Wait for the child process to finish
-        }
+        
+        if (node->type == TYPE_REDIRECT_IN)
+            dup2(fd, STDIN_FILENO);
+        else
+            dup2(fd, STDOUT_FILENO);
+        execute(node->right, vars);  // Execute the command after redirection
+        close(fd);
+        dup2(STDIN_FILENO, stdin_cpy);
+        dup2(STDOUT_FILENO, stdout_cpy);
     }
 }
           
@@ -794,14 +848,19 @@ int main(int ac, char **av, char **env)
         vars.tokens = NULL;
         parsing_input(&vars);
         expand_input(&vars);
-        // read_tokens(&vars);
-        make_ast(&vars);
+        init_lst_type(vars.tokens);
+        printf("Tokens:\n");
+        read_tokens(&vars);
+        add_cmd_lst(&vars.tokens);
+        printf("Input: %s\n", vars.args);
+        read_tokens(&vars);
+        // make_ast(&vars);
         // print_ast(vars.ast, 0);
         arr_env_list(&vars);
-        execute(vars.ast, &vars);
+        // execute(vars.ast, &vars);
         // read_tokens(&vars);
-        free_list(&vars);
-        free_ast(vars.ast);
+        // free_list(&vars);
+        // free_ast(vars.ast);
     }
     free_env(&vars);
     return (0);
