@@ -1,5 +1,47 @@
 #include "minishell.h"
 
+void arr_env_list(t_vars *vars, char** env)
+{
+    int i;
+
+    i = 0;
+    while (env[i])
+        i++;
+    vars->env_arr = (char **)malloc(sizeof(char *) * (i + 1));
+    if (!vars->env_arr)
+        return;
+    i = 0;
+    while (env[i])
+    {
+        vars->env_arr[i] = ft_strdup(env[i]);
+        i++;
+    }
+    vars->env_arr[i] = NULL;
+}
+
+char *ft_getenv(char *key, t_vars *vars)
+{
+    int i;
+    char *equal_sign;
+
+    i = 0;
+    if (!key || !vars || !vars->env_arr)
+        return (NULL);
+    while (vars->env_arr[i])
+    {
+        if (ft_strncmp(key, vars->env_arr[i], ft_strlen(key)) == 0 &&
+            vars->env_arr[i][ft_strlen(key)] == '=')
+        {
+            equal_sign = ft_strchr(vars->env_arr[i], '=');
+            if (equal_sign)
+                return (free(key), ft_substr(equal_sign + 1, 0,
+                        ft_strlen(equal_sign + 1)));
+        }
+        i++;
+    }
+    return (free(key), ft_calloc(1, 1));
+}
+
 int join_list(t_list **head, t_list *new)
 {
     t_list *current;
@@ -113,52 +155,8 @@ int parsing_input(t_vars *vars)
     return (0);
 }
 
-int init_env(int i, t_vars *vars, char **env)
-{
-    t_env *head;
-    t_env *current;
-
-    if (!env || !*env || !vars)
-        return (1);
-    head = (t_env *)malloc(sizeof(t_env));
-    if (!head)
-        return (1);
-    current = head;
-    current->prev = NULL;
-    while (env[i])
-    {
-        current->vari = ft_strdup(env[i]);
-        current->key = ft_split((env[i]), '=')[0];
-        current->val = ft_split((env[i]), '=')[1];
-        current->index = i++;
-        current->next = (t_env *)malloc(sizeof(t_env));
-        if (!current->next)
-            return (1);
-        current->next->prev = current;
-        current = current->next;
-    }
-    current->next = NULL;
-    vars->env_list = head;
-    return (0);
-}
-
 void free_env(t_vars *vars)
 {
-    t_env *current;
-    t_env *next;
-
-    current = vars->env_list;
-    while (current)
-    {
-        next = current->next;
-        free(current->key);
-        free(current->vari);
-        free(current->val);
-        free(current);
-        current = next;
-    }
-    vars->env_list = NULL;
-
     if (vars->env_arr)
     {
         while (vars->env_arr && *vars->env_arr)
@@ -221,9 +219,9 @@ char    *get_spec_env_move(char *arg, int *i, int *j, t_vars *vars)
 }
 char *get_env_move(char *arg, int *i, int *j, t_vars *vars)
 {
-    char *key;
-    t_env *current;
-
+    char    *key;
+    char    *value;
+    
     if  (arg[*i] == '?')
         return (get_spec_env_move(arg, i, j, vars));
     while (arg[*j] == 95 || ft_isalnum(arg[*j])) 
@@ -232,14 +230,10 @@ char *get_env_move(char *arg, int *i, int *j, t_vars *vars)
         return (ft_calloc(1, sizeof(char)));
     key = ft_substr(arg, *i, *j - *i);
 	*i = *j;
-    current = vars->env_list;
-    while (current->key)
-    {
-        if (ft_strncmp(key, current->key, ft_strlen(current->key)) == 0)
-            return (free(key), ft_strdup(current->val));
-        current = current->next;
-    }
-    return (free(key), ft_calloc(1, sizeof(char)));
+    value = ft_getenv(key, vars);
+    if (value != NULL)
+        return (value);
+    return (ft_calloc(1, sizeof(char)));
 }
 
 char *ft_join_quote_expand_move(char *tmp, char *arg, int *i, int *j, t_vars *vars)
@@ -358,22 +352,6 @@ void init_lst_type(t_list *list)
     }
 }
 
-void add_file_lst(t_list **current)
-{
-    t_list *add_fil;
-
-    add_fil = malloc(sizeof(t_list));
-    if (!add_fil)
-        return ;
-    add_fil->str = NULL;
-    add_fil->type = TYPE_FILE;
-    add_fil->prev = (*current);
-    add_fil->next = (*current)->next;
-    if ((*current)->next)
-        (*current)->next->prev = add_fil;
-    (*current)->next = add_fil;
-}
-
 void add_cmd_lst_head(t_list **current, t_list **token)
 {
     t_list *add_exec;
@@ -384,9 +362,11 @@ void add_cmd_lst_head(t_list **current, t_list **token)
     add_exec->str = NULL;
     add_exec->type = TYPE_CMD;
     add_exec->prev = NULL;
-    add_exec->next = (*current);
-    (*current)->prev = add_exec;
-    *token = *current;
+    add_exec->next = *current;
+    if (*current)
+        (*current)->prev = add_exec;
+    *token = add_exec;
+    *current = add_exec->next;
 }
 
 void add_cmd_lst_pipe(t_list **current)
@@ -398,63 +378,35 @@ void add_cmd_lst_pipe(t_list **current)
         return;
     add_exec->str = NULL;
     add_exec->type = TYPE_CMD;
-    add_exec->prev = (*current);
+    add_exec->prev = *current;
     add_exec->next = (*current)->next;
     if ((*current)->next)
         (*current)->next->prev = add_exec;
     (*current)->next = add_exec;
-    (*current) = add_exec->next;
+    *current = add_exec->next;
 }
 
 void add_cmd_fil_lst(t_list **tokens)
 {
     t_list *current;
-    t_list *add_exec;
 
     current = *tokens;
     while (current)
     {
         if (current->prev == NULL)
-            add_cmd_lst_head(&current, &tokens);
-        if (current->type == TYPE_PIPE)
+            add_cmd_lst_head(&current, tokens);
+        else if (current->type == TYPE_PIPE)
             add_cmd_lst_pipe(&current);
-        if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT
+        else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT
                 || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
-            add_fil_lst(&current);
+        {
+            if (current->next->type == TYPE_ARGV)
+                current->next->type = TYPE_FILE;
+            current = current->next;
+        }
         else
             current = current->next;
     }
-}
-
-
-char **join_cmd_token(t_list **current)
-{
-    int i;
-    int j;
-    t_list *tmp;
-    char **cmd;
-
-    if (!current || !*current)
-        return (NULL);
-    i = 0;
-    j = 0;
-    tmp = (*current)->next;        
-    while ((*current)->next && (*current)->next->type != TYPE_PIPE)
-    {
-        if ((*current)->type == TYPE_ARGV)
-            i++;
-        *current = (*current)->next;
-    }
-    cmd = (char **)malloc(sizeof(char *) * (i + 1));
-    if (!cmd)
-        return (NULL);
-    while (i > j)
-    {
-        cmd[j++] = ft_strdup(tmp->str);
-        tmp = tmp->next;
-    }
-    cmd[j] = NULL;
-    return (cmd);
 }
 
 void print_ast(t_ast *node, int depth)
@@ -559,26 +511,23 @@ void ast_redirect(t_ast **branch, t_list *current)
 void ast_pipe(t_ast **pipe_line, t_ast **branch)
 {
     t_ast *new_node;
-    t_ast *tmp;
 
     new_node = (t_ast *)malloc(sizeof(t_ast));
     if (!new_node)
         return ;
-    new_node->left = NULL;
     new_node->type = TYPE_PIPE;
     new_node->argv = (char **)malloc(sizeof(char *) * 2);
     new_node->argv[0] = ft_strdup("PIPE");
     new_node->argv[1] = NULL;
+    new_node->left = NULL;
     new_node->right = *branch;
-    if (*pipe_line == NULL)
-        *pipe_line = new_node;
-    else
+    new_node->prev = NULL;
+    if (*pipe_line)
     {
-        tmp = *pipe_line;
-        while (tmp->left != NULL)
-            tmp = tmp->left;
-        tmp->left = new_node;
+        new_node->prev = *pipe_line;
+        (*pipe_line)->left = new_node;
     }
+    *pipe_line = new_node;
     *branch = NULL;
 }
 
@@ -604,7 +553,36 @@ void ast_file(t_list **current, t_ast **branch)
     new_node->prev = temp;
 }
 
-void ast_cmd(t_list **current, t_ast **branch)
+char **join_cmd_ast(t_list *current)
+{
+    int count;
+    t_list *tmp;
+    char **argv;
+
+    count = 0;
+    tmp = current;
+    while (tmp && tmp->type != TYPE_PIPE)
+    {
+        if (tmp->type == TYPE_ARGV)
+            count++;
+        tmp = tmp->next;
+    }
+    argv = malloc(sizeof(char *) * (count + 1));
+    if (!argv)
+        return NULL;
+    int i = 0;
+    while (current && current->type != TYPE_PIPE)
+    {
+        if (current->type == TYPE_ARGV)
+            argv[i++] = ft_strdup(current->str);
+        current = current->next;
+    }
+    argv[i] = NULL;
+    return (argv);
+}
+
+
+void ast_cmd(t_ast **branch, t_list *current)
 {
     t_ast *new_node;
 
@@ -616,96 +594,44 @@ void ast_cmd(t_list **current, t_ast **branch)
     new_node->left = NULL;
     new_node->right = NULL;
     new_node->type = TYPE_CMD;
-    // new_node->argv = join_cmd_token(current);
+    new_node->argv = join_cmd_ast(current);
     *branch = new_node;
 }
 
 void    make_ast(t_vars *vars)
 {
     t_list  *current;
-
-    init_lst_type(vars->tokens);
-    add_cmd_lst(&vars->tokens);
+    t_ast   *tmp_pipe;
+    t_ast   *branch;
+    
+    tmp_pipe = NULL;
+    branch = NULL;
     current = vars->tokens;
     while (current != NULL)
     {
-        if (current->type == TYPE_CMD && vars->branch == NULL)
-            ast_cmd(&current, &vars->branch);
-        else if (current->type == TYPE_FILE)
-            ast_file(&current, &vars->branch);
-        else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT 
-                || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
-            ast_redirect(&vars->branch, current);
+        if (current->type == TYPE_CMD && branch == NULL)
+            ast_cmd(&branch, current);
+        // else if (current->type == TYPE_FILE)
+        //     ast_file(&current, &vars->branch);
+        // else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT 
+        //         || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
+        //     ast_redirect(&vars->branch, current);
         else if (current->type == TYPE_PIPE)
-            ast_pipe(&vars->pipe_line, &vars->branch);
-        current = current->next;  
+            ast_pipe(&tmp_pipe, &branch);
+        current = current->next;
     }
-    if (vars->pipe_line != NULL)
+    if (tmp_pipe)
     {
-        t_ast *tmp;
-        tmp = vars->pipe_line;
-        while (tmp->left)
-            tmp = tmp->left;
-        tmp->left = vars->branch;
-        vars->ast = vars->pipe_line;
+        tmp_pipe->left = branch;
+        branch->prev = tmp_pipe;
+        while (tmp_pipe->prev)
+            tmp_pipe = tmp_pipe->prev;
+        vars->ast = tmp_pipe;
     }
     else
-        vars->ast = vars->branch;
+        vars->ast = branch;
 }
 
-void arr_env_list(t_vars *vars)
-{
-    t_env *current;
-    t_env *temp;
-
-    int i;
-    if (!vars || !vars->env_list)
-        return;
-
-    current = vars->env_list;
-    i = 0;
-    // Count the number of environment variables
-    while (current)
-    {
-        i++;
-        current = current->next;
-    }
-
-    vars->env_arr = (char **)malloc(sizeof(char *) * (i + 1));
-    if (!vars->env_arr)
-        return;
-    temp = vars->env_list;
-    i = 0;
-
-    // Populate the env_arr array
-    while (temp)
-    {
-        if (temp->vari) // Ensure vari is valid
-        {
-            vars->env_arr[i] = ft_strdup(temp->vari);
-            i++;
-        }
-        temp = temp->next;
-    }
-    vars->env_arr[i] = NULL;
-}
-
-char *ft_getenv(char *key, t_env *env_list)
-{
-    t_env *current;
-
-    if (!key || !env_list)
-        return (NULL);
-
-    current = env_list;
-    while (current)
-    {
-        if (ft_strncmp(key, current->key, ft_strlen(key) + 1) == 0)
-            return (current->val);
-        current = current->next;
-    }
-    return (NULL);
-}
 void execute_builtin(t_ast *node, t_vars *vars)
 {
     if (ft_strncmp(node->argv[0], "echo", 5) == 0)
@@ -760,7 +686,7 @@ void execute_cmd(t_ast *node, t_vars *vars)
     if (!node || !node->argv)
         return ;
     // printf("Executing command: %s\n", node->argv[0]);
-    path_list = ft_split(ft_getenv("PATH", vars->env_list), ':');
+    path_list = ft_split(ft_getenv("PATH", vars), ':');
     while  (*path_list)
     {
         path = ft_strjoin(*path_list, "/");
@@ -869,26 +795,19 @@ int main(int ac, char **av, char **env)
 
     (void)ac;
     (void)av;
-    if (init_env(0, &vars, env))
-        return (free_env(&vars), 0);
+    arr_env_list(&vars, env);
     while (1)
     {
-        vars.env_arr = NULL;
         vars.args = NULL;
-        vars.pipe_line = NULL;
-        vars.branch = NULL;
         vars.tokens = NULL;
+        vars.ast = NULL;
         parsing_input(&vars);
         expand_input(&vars);
         init_lst_type(vars.tokens);
-        printf("Tokens:\n");
-        read_tokens(&vars);
         add_cmd_fil_lst(&vars.tokens);
-        printf("Input: %s\n", vars.args);
         read_tokens(&vars);
         make_ast(&vars);
         print_ast(vars.ast, 0);
-        arr_env_list(&vars);
         // execute(vars.ast, &vars);
         // read_tokens(&vars);
         // free_list(&vars);

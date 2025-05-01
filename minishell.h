@@ -60,12 +60,9 @@ typedef struct s_list
 typedef struct s_vars
 {
     int             end;
-    struct s_env    *env_list;
     char            **env_arr;
     struct s_list   *tokens;
     struct s_ast    *ast;
-    struct s_ast    *pipe_line;
-    struct s_ast    *branch;
     char            *args;
     int             exit_status;
 }   t_vars;
