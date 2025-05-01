@@ -480,8 +480,9 @@ void print_ast(t_ast *node, int depth)
 void ast_redirect(t_ast **branch, t_list *current)
 {
     t_ast *new_node;
-    t_ast *tmp;
+    t_ast *tmp_branch;
 
+    tmp_branch = *branch;
     new_node = (t_ast *)malloc(sizeof(t_ast));
     if (!new_node)
         return ;
@@ -490,22 +491,12 @@ void ast_redirect(t_ast **branch, t_list *current)
     new_node->argv[0] = ft_strdup("REDIRECT");
     new_node->argv[1] = NULL;
     new_node->type = current->type;
-    new_node->prev = NULL;
-    if (*branch == NULL)
-        *branch = new_node;
-    else if ((*branch)->type == 5)
-    {
-        new_node->right = (*branch);
-        (*branch) = new_node;
-    }   
-    else 
-    {
-        tmp = *branch;
-        while (tmp->left != NULL)
-            tmp = tmp->left;
-        tmp = new_node->right;
-        new_node = tmp->prev->left;
-    }
+    new_node->left = NULL;
+    new_node->right = NULL;
+    while (tmp_branch->left != NULL)
+        tmp_branch = tmp_branch->left;
+    tmp_branch->left = new_node;
+    new_node->prev = tmp_branch;
 }
 
 void ast_pipe(t_ast **pipe_line, t_ast **branch)
@@ -531,26 +522,26 @@ void ast_pipe(t_ast **pipe_line, t_ast **branch)
     *branch = NULL;
 }
 
-void ast_file(t_list **current, t_ast **branch)
+void ast_file(t_list *current, t_ast **branch)
 {
     t_ast *new_node;
-    t_ast *temp;
+    t_ast *tmp_branch;
 
+    tmp_branch = *branch;
     new_node = (t_ast *)malloc(sizeof(t_ast));
     if (!new_node)
         return ;
-    temp = *branch;
     new_node->argv = NULL;
     new_node->left = NULL;
     new_node->right = NULL;
     new_node->type = TYPE_FILE;
     new_node->argv = (char **)malloc(sizeof(char *) * 2);
-    new_node->argv[0] = ft_strdup((*current)->str);
+    new_node->argv[0] = ft_strdup(current->str);
     new_node->argv[1] = NULL;
-    while (temp->left != NULL)
-        temp = temp->left;
-    temp->left = new_node;
-    new_node->prev = temp;
+    while (tmp_branch->left != NULL)
+        tmp_branch = tmp_branch->left;
+    tmp_branch->right = new_node;
+    new_node->prev = tmp_branch;
 }
 
 char **join_cmd_ast(t_list *current)
@@ -603,7 +594,7 @@ void    make_ast(t_vars *vars)
     t_list  *current;
     t_ast   *tmp_pipe;
     t_ast   *branch;
-    
+
     tmp_pipe = NULL;
     branch = NULL;
     current = vars->tokens;
@@ -611,11 +602,11 @@ void    make_ast(t_vars *vars)
     {
         if (current->type == TYPE_CMD && branch == NULL)
             ast_cmd(&branch, current);
-        // else if (current->type == TYPE_FILE)
-        //     ast_file(&current, &vars->branch);
-        // else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT 
-        //         || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
-        //     ast_redirect(&vars->branch, current);
+        else if (current->type == TYPE_FILE)
+            ast_file(current, &branch);
+        else if (current->type == TYPE_REDIRECT_IN || current->type == TYPE_REDIRECT_OUT 
+                || current->type == TYPE_APPEND || current->type == TYPE_HEREDOC)
+            ast_redirect(&branch, current);
         else if (current->type == TYPE_PIPE)
             ast_pipe(&tmp_pipe, &branch);
         current = current->next;
