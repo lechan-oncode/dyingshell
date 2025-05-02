@@ -1,5 +1,28 @@
 #include "minishell.h"
 
+char *ft_getenv(char *key, t_vars *vars)
+{
+    int i;
+    char *equal_sign;
+
+    i = 0;
+    if (!key || !vars || !vars->env_arr)
+        return (NULL);
+    while (vars->env_arr[i])
+    {
+        if (ft_strncmp(key, vars->env_arr[i], ft_strlen(key)) == 0 &&
+            vars->env_arr[i][ft_strlen(key)] == '=')
+        {
+            equal_sign = ft_strchr(vars->env_arr[i], '=');
+            if (equal_sign)
+                return (ft_substr(equal_sign + 1, 0,
+                        ft_strlen(equal_sign + 1)));
+        }
+        i++;
+    }
+    return (ft_calloc(1, 1));
+}
+
 void arr_env_list(t_vars *vars, char** env)
 {
     int i;
@@ -17,29 +40,6 @@ void arr_env_list(t_vars *vars, char** env)
         i++;
     }
     vars->env_arr[i] = NULL;
-}
-
-char *ft_getenv(char *key, t_vars *vars)
-{
-    int i;
-    char *equal_sign;
-
-    i = 0;
-    if (!key || !vars || !vars->env_arr)
-        return (NULL);
-    while (vars->env_arr[i])
-    {
-        if (ft_strncmp(key, vars->env_arr[i], ft_strlen(key)) == 0 &&
-            vars->env_arr[i][ft_strlen(key)] == '=')
-        {
-            equal_sign = ft_strchr(vars->env_arr[i], '=');
-            if (equal_sign)
-                return (free(key), ft_substr(equal_sign + 1, 0,
-                        ft_strlen(equal_sign + 1)));
-        }
-        i++;
-    }
-    return (free(key), ft_calloc(1, 1));
 }
 
 int join_list(t_list **head, t_list *new)
@@ -589,6 +589,20 @@ void ast_cmd(t_ast **branch, t_list *current)
     *branch = new_node;
 }
 
+void ast_return(t_ast **tmp_pipe, t_ast **branch, t_vars *vars)
+{
+    if (*tmp_pipe)
+    {
+        (*tmp_pipe)->left = *branch;
+        (*branch)->prev = *tmp_pipe;
+        while ((*tmp_pipe)->prev)
+            *tmp_pipe = (*tmp_pipe)->prev;
+        vars->ast = *tmp_pipe;
+    }
+    else
+        vars->ast = *branch;
+}
+
 void    make_ast(t_vars *vars)
 {
     t_list  *current;
@@ -611,30 +625,21 @@ void    make_ast(t_vars *vars)
             ast_pipe(&tmp_pipe, &branch);
         current = current->next;
     }
-    if (tmp_pipe)
-    {
-        tmp_pipe->left = branch;
-        branch->prev = tmp_pipe;
-        while (tmp_pipe->prev)
-            tmp_pipe = tmp_pipe->prev;
-        vars->ast = tmp_pipe;
-    }
-    else
-        vars->ast = branch;
+    ast_return(&tmp_pipe, &branch, vars);
 }
 
 void execute_builtin(t_ast *node, t_vars *vars)
 {
     if (ft_strncmp(node->argv[0], "echo", 5) == 0)
-        builtin_echo(node->argv);
+        builtin_echo(node->argv, vars);
     // else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
     //     ft_cd(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "pwd", 4) == 0)
-        builtin_pwd(vars);
-    // else if (ft_strncmp(node->argv[0], "export", 7) == 0)
-    //     ft_export(node->argv, vars);
+        builtin_pwd(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "export", 7) == 0)
+        builtin_export(node->argv, vars);
     // else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
-    //     ft_unset(node->argv, vars);
+    //     builtin_unset(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "env", 4) == 0)
         builtin_env(vars);
     // else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
@@ -702,9 +707,12 @@ void execute(t_ast *node, t_vars *vars)
     if (node->type == TYPE_CMD)
     {
         if (is_builtin(node->argv[0]))
+        {
+            printf("Executing builtin: %s\n", node->argv[0]);
             execute_builtin(node, vars);
-        else
-            execute_cmd(node, vars);
+        }
+        // else
+        //     execute_cmd(node, vars);
     }
     else if (node->type == TYPE_PIPE)
     {
@@ -796,13 +804,12 @@ int main(int ac, char **av, char **env)
         expand_input(&vars);
         init_lst_type(vars.tokens);
         add_cmd_fil_lst(&vars.tokens);
-        read_tokens(&vars);
-        make_ast(&vars);
-        print_ast(vars.ast, 0);
-        // execute(vars.ast, &vars);
         // read_tokens(&vars);
-        // free_list(&vars);
-        // free_ast(vars.ast);
+        make_ast(&vars);
+        // print_ast(vars.ast, 0);
+        execute(vars.ast, &vars);
+        free_list(&vars);
+        free_ast(vars.ast);
     }
     free_env(&vars);
     return (0);

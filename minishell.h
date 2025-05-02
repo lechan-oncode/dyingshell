@@ -86,12 +86,15 @@ void	*ft_calloc(size_t count, size_t size);
 char	*ft_strjoin(char const *s1, char const *s2);
 size_t	ft_strlen(const char *s);
 int     ft_isalnum(int i);
+int     ft_isdigit(int i);
 int     ft_atoi(const char *str);
 int     ft_strncmp(const char *s1, const char *s2, size_t n);
 
-int     builtin_echo(char **args);
+int     builtin_echo(char **args, t_vars *vars);
 int     builtin_env(t_vars *vars);
-int     builtin_pwd(t_vars *vars);
-
+int     builtin_pwd(char **args,t_vars *vars);
+int     builtin_export(char **args, t_vars *vars);
+int     builtin_unset(char **args, t_vars *vars);
+char    *ft_getenv(char *key, t_vars *vars);
 
 # endif
