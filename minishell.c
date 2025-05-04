@@ -699,24 +699,60 @@ void execute_cmd(t_ast *node, t_vars *vars)
     }
 }
 
+int reccuring_redirection(t_ast *node)
+{
+    int fd = -1;
+
+    if (node->type == TYPE_REDIRECT_IN)
+        fd = open(node->right->argv[0], O_RDONLY);
+    else if (node->type == TYPE_REDIRECT_OUT)
+        fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    else if (node->type == TYPE_APPEND)
+        fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+    if (fd == -1)
+    {
+        perror("minishell: open failed");
+        return (1);
+    }
+
+    if (node->type == TYPE_REDIRECT_IN)
+        dup2(fd, STDIN_FILENO);
+    else
+    {
+        dup2(fd, STDOUT_FILENO);
+    }
+
+    close(fd);
+
+    if (node->left != NULL)
+        reccuring_redirection(node->left);
+    return (0);
+}
+
 void execute(t_ast *node, t_vars *vars)
 {
-    // printf("Executing command...\n");
+    printf("Executing...\n");
     if (!node)
         return;
     if (node->type == TYPE_CMD)
     {
-        if (is_builtin(node->argv[0]))
-        {
-            printf("Executing builtin: %s\n", node->argv[0]);
+
+        if (node->left != NULL)
+            execute(node->left, vars);
+        else if (is_builtin(node->argv[0]))
             execute_builtin(node, vars);
-        }
-        // else
-        //     execute_cmd(node, vars);
+        else
+            execute_cmd(node, vars);
     }
     else if (node->type == TYPE_PIPE)
     {
         int pipe_fd[2];
+        int orig_stdout;
+        int orig_stdin; 
+        
+        orig_stdout = dup(STDOUT_FILENO);
+        orig_stdin = dup(STDIN_FILENO);
         if (pipe(pipe_fd) == -1)
         {
             perror("minishell: pipe failed");
@@ -758,35 +794,28 @@ void execute(t_ast *node, t_vars *vars)
         close(pipe_fd[1]);
         waitpid(-1, &vars->exit_status, 0);
         waitpid(-1, &vars->exit_status, 0);
+        dup2(orig_stdout, STDOUT_FILENO); // Restore stdout
+        dup2(orig_stdin, STDIN_FILENO); // Restore stdin
     }
 
     else if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
              node->type == TYPE_APPEND || node->type == TYPE_HEREDOC)
     {
-        int fd = -1;
         int stdin_cpy;
         int stdout_cpy;
 
+        printf("Executing redirection...\n");
+        printf("Redirection type: %d\n", node->type);
         stdin_cpy = dup(STDIN_FILENO);
         stdout_cpy = dup(STDOUT_FILENO);
-        if (node->type == TYPE_REDIRECT_IN)
-            fd = open(node->right->argv[0], O_RDONLY);
-        else if (node->type == TYPE_REDIRECT_OUT)
-            fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        else if (node->type == TYPE_APPEND)
-            fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
-        
-        if (node->type == TYPE_REDIRECT_IN)
-            dup2(fd, STDIN_FILENO);
-        else
-            dup2(fd, STDOUT_FILENO);
-        execute(node->right, vars);  // Execute the command after redirection
-        close(fd);
-        dup2(STDIN_FILENO, stdin_cpy);
-        dup2(STDOUT_FILENO, stdout_cpy);
+        reccuring_redirection(node);
+        execute_cmd(node->prev, vars);
+        dup2(stdin_cpy, STDIN_FILENO);
+        dup2(stdout_cpy, STDOUT_FILENO);
+        close(stdin_cpy);
+        close(stdout_cpy);
     }
 }
-          
 
 int main(int ac, char **av, char **env)
 {
@@ -804,9 +833,9 @@ int main(int ac, char **av, char **env)
         expand_input(&vars);
         init_lst_type(vars.tokens);
         add_cmd_fil_lst(&vars.tokens);
-        // read_tokens(&vars);
+        read_tokens(&vars);
         make_ast(&vars);
-        // print_ast(vars.ast, 0);
+        print_ast(vars.ast, 0);
         execute(vars.ast, &vars);
         free_list(&vars);
         free_ast(vars.ast);

@@ -67,16 +67,6 @@ typedef struct s_vars
     int             exit_status;
 }   t_vars;
 
-typedef struct  s_env
-{
-    int             index;
-    char            *vari;
-    char            *key;
-    char            *val;
-    struct s_env    *next;
-    struct s_env    *prev;
-}   t_env;
-
 // Add libft function prototypes
 char    *ft_strdup(const char *s);
 char    **ft_split(char const *s, char c);

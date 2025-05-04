@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/02 20:03:48 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/04 13:08:23 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,7 +127,7 @@ int	builtin_echo(char **args, t_vars *vars)
 	while (args[i])
 	{
 		printf("%s", args[i++]);
-		if (args[i])
+		if (args[i - 1][0] != '\0')
 			printf(" ");
 	}
 	if (args[1] && ft_strncmp(args[1], "-n", 2) != 0)
