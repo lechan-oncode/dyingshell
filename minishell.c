@@ -6,14 +6,14 @@ char *ft_getenv(char *key, t_vars *vars)
     char *equal_sign;
 
     i = 0;
-    if (!key || !vars || !vars->env_arr)
+    if (!key || !vars || !vars->exp_arr)
         return (NULL);
-    while (vars->env_arr[i])
+    while (vars->exp_arr[i])
     {
-        if (ft_strncmp(key, vars->env_arr[i], ft_strlen(key)) == 0 &&
-            vars->env_arr[i][ft_strlen(key)] == '=')
+        if (ft_strncmp(key, vars->exp_arr[i], ft_strlen(key)) == 0 &&
+            vars->exp_arr[i][ft_strlen(key)] == '=')
         {
-            equal_sign = ft_strchr(vars->env_arr[i], '=');
+            equal_sign = ft_strchr(vars->exp_arr[i], '=');
             if (equal_sign)
                 return (ft_substr(equal_sign + 1, 0,
                         ft_strlen(equal_sign + 1)));
@@ -23,23 +23,30 @@ char *ft_getenv(char *key, t_vars *vars)
     return (ft_calloc(1, 1));
 }
 
-void arr_env_list(t_vars *vars, char** env)
+void dup_arr(char ***arr, char **src, int env)
 {
     int i;
+    char *equal;
 
     i = 0;
-    while (env[i])
+    while (src[i])
+    {
+        equal = ft_trim(src[i], '=', 0, 1, 0);
+        if (env == 1 && equal == NULL)
+            i--;
         i++;
-    vars->env_arr = (char **)malloc(sizeof(char *) * (i + 1));
-    if (!vars->env_arr)
+        free(equal);
+    }
+    *arr = (char **)malloc(sizeof(char *) * (i + 1));
+    if (!arr)
         return;
     i = 0;
-    while (env[i])
+    while (src[i])
     {
-        vars->env_arr[i] = ft_strdup(env[i]);
+        (*arr)[i] = ft_strdup(src[i]);
         i++;
     }
-    vars->env_arr[i] = NULL;
+    (*arr)[i] = NULL;
 }
 
 int join_list(t_list **head, t_list *new)
@@ -157,15 +164,15 @@ int parsing_input(t_vars *vars)
 
 void free_env(t_vars *vars)
 {
-    if (vars->env_arr)
+    if (vars->exp_arr)
     {
-        while (vars->env_arr && *vars->env_arr)
+        while (vars->exp_arr && *vars->exp_arr)
         {
-            free(*vars->env_arr);
-            vars->env_arr++;
+            free(*vars->exp_arr);
+            vars->exp_arr++;
         }
-        free(vars->env_arr);
-        vars->env_arr = NULL;
+        free(vars->exp_arr);
+        vars->exp_arr = NULL;
     }
 }
 
@@ -661,7 +668,7 @@ void run_exec(char *valid_path, t_ast *node, t_vars *vars)
     pid_t pid = fork();
     if (pid == 0)
     {
-        if (execve(valid_path, node->argv, vars->env_arr) == -1)
+        if (execve(valid_path, node->argv, vars->exp_arr) == -1)
         {
             perror("minishell");
             exit(1);
@@ -817,13 +824,13 @@ void execute(t_ast *node, t_vars *vars)
     }
 }
 
-int main(int ac, char **av, char **env)
+int main(int ac, char **av, char **envp)
 {
     t_vars vars;
 
     (void)ac;
     (void)av;
-    arr_env_list(&vars, env);
+    dup_arr(&vars.exp_arr, envp, 0);
     while (1)
     {
         vars.args = NULL;

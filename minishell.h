@@ -60,7 +60,7 @@ typedef struct s_list
 typedef struct s_vars
 {
     int             end;
-    char            **env_arr;
+    char            **exp_arr;
     struct s_list   *tokens;
     struct s_ast    *ast;
     char            *args;
@@ -86,5 +86,7 @@ int     builtin_pwd(char **args,t_vars *vars);
 int     builtin_export(char **args, t_vars *vars);
 int     builtin_unset(char **args, t_vars *vars);
 char    *ft_getenv(char *key, t_vars *vars);
+void    dup_arr(char ***arr, char **env);
+char    *ft_trim(char *str, char c,int key, int equal,int value);
 
 # endif
