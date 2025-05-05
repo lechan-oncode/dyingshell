@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/05 17:02:51 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/05 18:07:48 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -257,11 +257,36 @@ int	builtin_pwd(char **args, t_vars *vars)
 {
 	char	*cwd;
 
-	cwd = ft_getenv(args[0], vars);
+	(void)args;
+	cwd = ft_getenv("PWD", vars);
 	printf("%s\n", cwd);
 	if (cwd)
 		vars->exit_status = 1;	
 	free(cwd);
 	vars->exit_status = 0;
 	return (vars->exit_status);
+}
+
+int builtin_cd(char **args, t_vars *vars)
+{
+	char	*cwd;
+	int		i;
+
+	cwd = ft_getenv("HOME", vars);
+	if (args[1] == NULL)
+	{
+		chdir(cwd);
+		free(cwd);
+		return (0);
+	}
+	else if (args[1][0] == '-' && args[1][1] == '\0')
+	{
+		i = ft_getenv_pos("OLDPWD", vars);
+		if (i >= 0)
+			chdir(vars->exp_arr[i]);
+	}
+	else
+		chdir(args[1]);
+	free(cwd);
+	return (0);
 }

@@ -86,6 +86,7 @@ int     builtin_env(t_vars *vars);
 int     builtin_pwd(char **args, t_vars *vars);
 int     builtin_export(char **args, t_vars *vars);
 int     builtin_unset(char **args, t_vars *vars);
+int     builtin_cd(char **args, t_vars *vars);
 int     ft_getenv_pos(char *key, t_vars *vars);
 void    modify_env_arr(char *arg, char *key, int flag, t_vars *vars);
 int     valid_key(char *key);

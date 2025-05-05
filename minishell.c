@@ -650,8 +650,8 @@ void execute_builtin(t_ast *node, t_vars *vars)
 {
     if (ft_strncmp(node->argv[0], "echo", 5) == 0)
         builtin_echo(node->argv, vars);
-    // else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
-    //     ft_cd(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
+        builtin_cd(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "pwd", 4) == 0)
         builtin_pwd(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "export", 7) == 0)
