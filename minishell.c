@@ -23,20 +23,13 @@ char *ft_getenv(char *key, t_vars *vars)
     return (ft_calloc(1, 1));
 }
 
-void dup_arr(char ***arr, char **src, int env)
+void dup_arr(char ***arr, char **src)
 {
     int i;
-    char *equal;
 
     i = 0;
     while (src[i])
-    {
-        equal = ft_trim(src[i], '=', 0, 1, 0);
-        if (env == 1 && equal == NULL)
-            i--;
         i++;
-        free(equal);
-    }
     *arr = (char **)malloc(sizeof(char *) * (i + 1));
     if (!arr)
         return;
@@ -162,18 +155,15 @@ int parsing_input(t_vars *vars)
     return (0);
 }
 
-void free_env(t_vars *vars)
+void free_arr(char **arr)
 {
-    if (vars->exp_arr)
-    {
-        while (vars->exp_arr && *vars->exp_arr)
-        {
-            free(*vars->exp_arr);
-            vars->exp_arr++;
-        }
-        free(vars->exp_arr);
-        vars->exp_arr = NULL;
-    }
+    int i;
+
+    i = 0;
+    if (arr[i])
+        free(arr[i]);
+    free(arr);
+    arr = NULL;
 }
 
 void free_ast(t_ast *node)
@@ -645,8 +635,8 @@ void execute_builtin(t_ast *node, t_vars *vars)
         builtin_pwd(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "export", 7) == 0)
         builtin_export(node->argv, vars);
-    // else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
-    //     builtin_unset(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
+        builtin_unset(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "env", 4) == 0)
         builtin_env(vars);
     // else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
@@ -688,7 +678,6 @@ void execute_cmd(t_ast *node, t_vars *vars)
     
     if (!node || !node->argv)
         return ;
-    // printf("Executing command: %s\n", node->argv[0]);
     path_list = ft_split(ft_getenv("PATH", vars), ':');
     while  (*path_list)
     {
@@ -696,7 +685,6 @@ void execute_cmd(t_ast *node, t_vars *vars)
         valid_path = ft_strjoin(path, node->argv[0]);
         if (access(valid_path, X_OK) == 0)
         {
-            // printf("Executable found: %s\n", ft_strjoin(path, node->argv[0]));
             run_exec(valid_path, node, vars);
             break;
         }
@@ -716,22 +704,16 @@ int reccuring_redirection(t_ast *node)
         fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
     else if (node->type == TYPE_APPEND)
         fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
-
     if (fd == -1)
     {
         perror("minishell: open failed");
         return (1);
     }
-
     if (node->type == TYPE_REDIRECT_IN)
         dup2(fd, STDIN_FILENO);
     else
-    {
         dup2(fd, STDOUT_FILENO);
-    }
-
     close(fd);
-
     if (node->left != NULL)
         reccuring_redirection(node->left);
     return (0);
@@ -830,7 +812,7 @@ int main(int ac, char **av, char **envp)
 
     (void)ac;
     (void)av;
-    dup_arr(&vars.exp_arr, envp, 0);
+    dup_arr(&vars.exp_arr, envp);
     while (1)
     {
         vars.args = NULL;
@@ -847,6 +829,6 @@ int main(int ac, char **av, char **envp)
         free_list(&vars);
         free_ast(vars.ast);
     }
-    free_env(&vars);
+    free_arr(vars.exp_arr);
     return (0);
 }

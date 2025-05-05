@@ -82,11 +82,17 @@ int     ft_strncmp(const char *s1, const char *s2, size_t n);
 
 int     builtin_echo(char **args, t_vars *vars);
 int     builtin_env(t_vars *vars);
-int     builtin_pwd(char **args,t_vars *vars);
+int     builtin_pwd(char **args, t_vars *vars);
 int     builtin_export(char **args, t_vars *vars);
 int     builtin_unset(char **args, t_vars *vars);
+int     ft_getenv_pos(char *key, t_vars *vars);
+void    modify_env_arr(char *arg, char *key, int flag, t_vars *vars);
+int     valid_key(char *key);
+void    print_export(char **arr);
+void    sort_export(t_vars *vars);
+void    free_arr(char **arr);
+void    dup_arr(char ***arr, char **src);
+char    *ft_trim(char *str, char c, int key, int equal, int value);
 char    *ft_getenv(char *key, t_vars *vars);
-void    dup_arr(char ***arr, char **env);
-char    *ft_trim(char *str, char c,int key, int equal,int value);
 
 # endif

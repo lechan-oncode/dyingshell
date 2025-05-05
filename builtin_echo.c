@@ -6,17 +6,13 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/04 17:05:05 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/05 17:02:51 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 # include "minishell.h"
 
-// int builtin_unset(char **args, t_vars *vars)
-// {
 
-// 	return (cmdcode);
-// }	
 
 int ft_getenv_pos(char *key, t_vars *vars)
 {
@@ -33,38 +29,33 @@ int ft_getenv_pos(char *key, t_vars *vars)
 	}
 	return (-1);
 }
+
 void modify_env_arr(char *arg, char *key, int flag, t_vars *vars)
 {
     int count;
-	int size;
-	int pos;
-    char **tmp;
-    char **env_ptr;
-	char **tmp_ptr;
+	int i;
+	int j;
+	char **tmp;
 	
-	size = 0;
-    pos = ft_getenv_pos(key, vars);
-	while (vars->exp_arr[size])
-		size++;
-    tmp = malloc(sizeof(char *) * (size + flag + 1));
-	env_ptr = vars->exp_arr;
-	tmp_ptr = tmp;
-    count = 0;
-    while (pos > count++)
-        *tmp_ptr++ = *env_ptr++;
-    if (flag == 0)
-	{
-        *tmp_ptr++ = ft_strdup(arg);
-		free(*env_ptr++);
-    } 
-	else if (flag == 1)
-        *tmp_ptr++ = ft_strdup(arg);
-    else if (flag == -1)
-		free(*env_ptr++);
-    while (*env_ptr)
-        *tmp_ptr++ = *env_ptr++;
-    *tmp_ptr = NULL;
-    vars->exp_arr = tmp;
+	i = 0;
+	j = 0;
+	count = 0;
+	while (vars->exp_arr[count])
+		count++;
+    tmp = malloc(sizeof(char *) * (count + flag + 1));
+	while (ft_getenv_pos(key, vars) > i)
+		tmp[j++] = vars->exp_arr[i++];
+	if (flag == -1 || flag == 0)
+		i++;
+	if (flag == 0)
+        tmp[j++] = ft_strdup(arg);
+	while (vars->exp_arr[i])
+		tmp[j++] = vars->exp_arr[i++];
+	if (flag == 1)
+		tmp[j++] = ft_strdup(arg);
+    tmp[j] = NULL;
+	free_arr(vars->exp_arr);
+	dup_arr(&vars->exp_arr, tmp);
 }
 
 
@@ -106,6 +97,44 @@ char *ft_trim(char *str, char c, int key, int equal,int value)
 	return (NULL);
 }
 
+void print_export(char **arr)
+{
+	int i;
+
+	i = 0;
+	while (arr[i])
+	{
+		printf("declare -x %s", ft_trim(arr[i], '=', 1, 0, 0));
+		if (ft_strchr(arr[i], '='))
+			printf("=\"%s\"", ft_trim(arr[i], '=', 0, 0, 1));	
+		printf("\n");
+		i++;
+	}
+}
+
+
+int compare_strings(const char *s1, const char *s2)
+{
+    int i;
+    
+    i = 0;
+	while (s1[i] != '\0' && s2[i] != '\0' && s1[i] != '=' && s2[i] != '=')
+    {
+        if (s1[i] > s2[i]) {
+            return 1;
+        } else if (s1[i] < s2[i]) {
+            return -1;
+        }
+        i++;
+    }
+    if ((s1[i] == '=' && s2[i] != '=') || (s1[i] == '\0' && s2[i] != '=')) {
+        return -1;
+    } else if ((s2[i] == '=' && s1[i] != '=') || (s2[i] == '\0' && s1[i] != '=')) {
+        return 1;
+    }
+    return 0;
+}
+
 void sort_export(t_vars *vars)
 {
 	char **sort_arr;
@@ -113,14 +142,14 @@ void sort_export(t_vars *vars)
 	int j;
 	char *tmp;
 
-	dup_arr(&sort_arr, vars->exp_arr, 0);
+	dup_arr(&sort_arr, vars->exp_arr);
 	i = 0;
 	while (sort_arr[i])
 	{
 		j = i + 1;
 		while (sort_arr[j])
 		{
-			if (ft_strncmp(sort_arr[i], sort_arr[j], ft_strlen(sort_arr[i])) > 0)
+			if (compare_strings(sort_arr[i], sort_arr[j]) > 0)
 			{
 				tmp = sort_arr[i];
 				sort_arr[i] = sort_arr[j];
@@ -130,13 +159,7 @@ void sort_export(t_vars *vars)
 		}
 		i++;
 	}
-	i = 0;
-	while (sort_arr[i])
-	{
-		if (ft_strchr(sort_arr[i], '='))
-			printf("declare -x %s\n", sort_arr[i]);
-		i++;
-	}
+	print_export(sort_arr);
 }
 
 int builtin_export(char **args, t_vars *vars)
@@ -153,31 +176,59 @@ int builtin_export(char **args, t_vars *vars)
 	{
 		while (args[++i])
 		{
-			printf("args[%d]: %s\n", i, args[i]);
 			key = ft_trim(args[i],  '=', 1, 0, 0);
 			equal = ft_trim(args[i],'=', 0, 1, 0);
 			if (valid_key(key) == 1)
-			{
-				printf("export: '%s': not a valid identifier\n", key);
 				vars->exit_status = 1;
-			}
 			else if (ft_getenv_pos(key, vars) < 0)
-            {
-				printf("add key: %s\n", key);
-				modify_env_arr(args[i], key, 1, vars);
-			}
+            	modify_env_arr(args[i], key, 1, vars);
 			else if (equal != NULL)
-			{
-				char *value = ft_trim(args[i], '=',0, 0, 1);
-				printf("change value: %s\n", value);
 				modify_env_arr(args[i], key, 0, vars);
-			}
 			free(key);
 			free(equal);
 		}
 	}
 	return (vars->exit_status);
 }
+
+int builtin_unset(char **args, t_vars *vars)
+{
+	int i;
+	int pos;
+	char *key;
+	
+	i = 0;
+	vars->exit_status = 0;
+	while (args[++i])
+	{
+		pos = ft_getenv_pos(args[i], vars);
+		if (pos >= 0)
+		{
+			key = ft_trim(args[i], '=', 1, 0, 0);
+			modify_env_arr(args[i], args[i], -1, vars);
+			free(key);
+		}
+	}
+	return (vars->exit_status);
+}
+
+int builtin_env(t_vars *vars)
+{
+	int i;
+	char *equal;
+	
+	i = 0;
+	vars->exit_status = 0;
+	while (vars->exp_arr[i])
+	{
+		equal = ft_trim(vars->exp_arr[i], '=', 0, 1, 0);
+		if (equal != NULL)
+			printf("%s\n", vars->exp_arr[i]);		
+		free(equal);
+		i++;	
+	}
+	return (vars->exit_status);
+}	
 
 int	builtin_echo(char **args, t_vars *vars)
 {
@@ -213,25 +264,4 @@ int	builtin_pwd(char **args, t_vars *vars)
 	free(cwd);
 	vars->exit_status = 0;
 	return (vars->exit_status);
-}
-
-int builtin_env(t_vars *vars)
-{
-	int	i;
-	int	cmdcode;
-
-	i = 0;
-	cmdcode = 0;
-	if (!vars || !vars->exp_arr)
-	{
-		cmdcode = 127;
-		return (cmdcode);
-	}
-	while (vars->exp_arr[i] && ft_strchr(vars->exp_arr[i], '='))
-	{
-		printf("%s\n", vars->exp_arr[i]);
-		i++;
-	}
-	vars->exit_status = cmdcode;
-	return (cmdcode);
 }
