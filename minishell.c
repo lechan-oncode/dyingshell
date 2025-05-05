@@ -90,10 +90,57 @@ int new_token(int *start, int *len, t_vars *vars)
     return (0);
 }
 
+static void handle_quotes(int *i, int *j, char *input)
+{
+    char quote;
+    
+    quote = input[*i + *j];
+    (*j)++;
+    while (input[*i + *j] && input[*i + *j] != quote)
+        (*j)++;
+    if (input[*i + *j] == quote)
+        (*j)++;
+}
+
+static void handle_special_chars(int *i, int *j, char *input, t_vars *vars)
+{
+    if (*j > 0)
+    {
+        if (new_token(i, j, vars)) 
+            return ;  // Early exit if error
+    }
+    (*j)++;
+    if (input[*i + *j] == input[*i + *j - 1] && input[*i + *j] != 124)
+        (*j)++;
+    new_token(i, j, vars);
+}
+
+static void handle_spaces(int *i, int *j, char *input, t_vars *vars)
+{
+    if (*j > 0)
+    {
+        if (new_token(i, j, vars)) 
+            return ;
+    }
+    while (input[*i + *j] && ft_isspace(input[*i + *j]))
+        (*i)++;
+}
+
+static void handle_end_of_token(int *i, int *j, char *input, t_vars *vars)
+{
+    if (!input[*i + *j] && *j > 0)
+    {
+        if (new_token(i, j, vars))
+        {
+            free(input);
+            return ;
+        }
+        return ;
+    }
+}
+
 int clean_space(int i, int j, t_vars *vars)
 {
-    const char *space = " \t\n\r\v\f";
-    char c;
     char *input;
 
     if (vars == NULL || vars->args == NULL)
@@ -102,46 +149,20 @@ int clean_space(int i, int j, t_vars *vars)
     while (input[i + j])
     {
         if ((input[i + j] == 34) || (input[i + j] == 39))
-        {
-            c = input[i + j];
-            j++;
-            while (input[i + j] && input[i + j] != c)
-                j++;
-            if (input[i + j] == c)
-                j++;
-        }
+            handle_quotes(&i, &j, input);
         else if (input[i + j] == 60 || input[i + j] == 62 || input[i + j] == 124)
         {
-            if (j > 0)
-            {
-                if (new_token(&i, &j, vars))
-                    return (free(input), 1);
-            }
-            j++;
-            if (input[i + j] == input[i + j - 1] && input[i + j] != 124)
-                j++;
-            new_token(&i, &j, vars);
+            handle_special_chars(&i, &j, input, vars);
             continue;
         }
-        else if (ft_strchr(space, input[i + j]))
+        else if (ft_isspace(input[i + j]))
         {
-            if (j > 0)
-            {
-                if (new_token(&i, &j, vars))
-                    return (free(input), 1);
-            }
-            while (input[i + j] && ft_strchr(space, input[i + j]))
-                i++;
+            handle_spaces(&i, &j, input, vars);
             continue;
         }
         else
             j++;
-        if (!input[i + j] && j > 0)
-        {
-            if (new_token(&i, &j, vars))
-                return (free(input), 1);
-            break;
-        }
+        handle_end_of_token(&i, &j, input, vars);
     }
     return (0);
 }

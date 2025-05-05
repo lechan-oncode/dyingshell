@@ -1,5 +1,10 @@
 # include "minishell.h"
 
+int ft_isspace(int i)
+{
+	return (i == 32 || (i >= 9 && i <= 13));
+}
+
 int	ft_isalpha(int i)
 {
 	return ((i >= 'A' && i <= 'Z') || (i >= 'a' && i <= 'z'));

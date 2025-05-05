@@ -77,6 +77,7 @@ char	*ft_strjoin(char const *s1, char const *s2);
 size_t	ft_strlen(const char *s);
 int     ft_isalnum(int i);
 int     ft_isdigit(int i);
+int     ft_isspace(int i);
 int     ft_atoi(const char *str);
 int     ft_strncmp(const char *s1, const char *s2, size_t n);
 
