@@ -714,30 +714,78 @@ void execute_cmd(t_ast *node, t_vars *vars)
         path_list++;
     }
 }
-
-int reccuring_redirection(t_ast *node)
+int append(t_ast *node)
 {
     int fd = -1;
 
-    if (node->type == TYPE_REDIRECT_IN)
-        fd = open(node->right->argv[0], O_RDONLY);
-    else if (node->type == TYPE_REDIRECT_OUT)
-        fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    else if (node->type == TYPE_APPEND)
-        fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
+    fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd == -1)
     {
         perror("minishell: open failed");
         return (1);
     }
-    if (node->type == TYPE_REDIRECT_IN)
-        dup2(fd, STDIN_FILENO);
-    else
-        dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDOUT_FILENO);
     close(fd);
+    return (0);
+}
+
+int redirect_out(t_ast *node)
+{
+    int fd = -1;
+
+    fd = open(node->right->argv[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1)
+    {
+        perror("minishell: open failed");
+        return (1);
+    }
+    dup2(fd, STDOUT_FILENO);
+    close(fd);
+    return (0);
+}
+
+int redirect_in(t_ast *node)
+{
+    int fd = -1;
+
+    fd = open(node->right->argv[0], O_RDONLY);
+    if (fd == -1)
+    {
+        perror("minishell: open failed");
+        return (1);
+    }
+    dup2(fd, STDIN_FILENO);
+    close(fd);
+    return (0);
+}
+void heredoc(t_ast *node)
+{
+    int	pipe_ends[2];
+
+    if (pipe(pipe_ends) == -1)
+	    perror("minishell: heredoc failed");
+    write(pipe_ends[1], node->argv[0], ft_strlen(node->argv[0]));
+    close(pipe_ends[1]);
+    dup2(pipe_ends[0], STDIN_FILENO);
+    close(pipe_ends[0]);
+}
+
+int reccuring_redirection(t_ast *node)
+{
+    int cmdcode;
+
+    cmdcode = 0;
+    if (node->type == TYPE_REDIRECT_IN)
+        cmdcode = redirect_in(node);
+    else if (node->type == TYPE_REDIRECT_OUT)
+        cmdcode = redirect_out(node);
+    else if (node->type == TYPE_APPEND)
+        cmdcode = append(node);
+    else if (node->type == TYPE_HEREDOC)
+       heredoc(node);
     if (node->left != NULL)
         reccuring_redirection(node->left);
-    return (0);
+    return (cmdcode);
 }
 
 void execute(t_ast *node, t_vars *vars)
@@ -747,7 +795,6 @@ void execute(t_ast *node, t_vars *vars)
         return;
     if (node->type == TYPE_CMD)
     {
-
         if (node->left != NULL)
             execute(node->left, vars);
         else if (is_builtin(node->argv[0]))
@@ -845,7 +892,7 @@ int main(int ac, char **av, char **envp)
         add_cmd_fil_lst(&vars.tokens);
         // read_tokens(&vars);
         make_ast(&vars);
-        print_ast(vars.ast, 0);
+        // print_ast(vars.ast, 0);
         execute(vars.ast, &vars);
         free_list(&vars);
         free_ast(vars.ast);
