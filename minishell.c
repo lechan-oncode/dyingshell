@@ -843,7 +843,7 @@ int main(int ac, char **av, char **envp)
         expand_input(&vars);
         init_lst_type(vars.tokens);
         add_cmd_fil_lst(&vars.tokens);
-        read_tokens(&vars);
+        // read_tokens(&vars);
         make_ast(&vars);
         print_ast(vars.ast, 0);
         execute(vars.ast, &vars);
