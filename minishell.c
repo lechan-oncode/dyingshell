@@ -819,25 +819,9 @@ void execute(t_ast *node, t_vars *vars)
         pid_t pid = fork();
         if (pid == 0)
         {
-            // Left child process
             close(pipe_fd[0]); // Close read end
             dup2(pipe_fd[1], STDOUT_FILENO); // Redirect stdout to pipe
             close(pipe_fd[1]);
-            execute(node->left, vars);
-            exit(0);
-        }
-        else if (pid < 0)
-        {
-            perror("minishell: fork failed");
-        }
-
-        pid = fork();
-        if (pid == 0)
-        {
-            // Right child process
-            close(pipe_fd[1]); // Close write end
-            dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
-            close(pipe_fd[0]);
             execute(node->right, vars);
             exit(0);
         }
@@ -845,11 +829,17 @@ void execute(t_ast *node, t_vars *vars)
         {
             perror("minishell: fork failed");
         }
-
+        if (pid > 0)
+        {
+            // Right child process
+            close(pipe_fd[1]); // Close write end
+            dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
+            close(pipe_fd[0]);
+            execute(node->left, vars);
+        }
         // Parent process closes pipe and waits for children
         close(pipe_fd[0]);
         close(pipe_fd[1]);
-        waitpid(-1, &vars->exit_status, 0);
         waitpid(-1, &vars->exit_status, 0);
         dup2(orig_stdout, STDOUT_FILENO); // Restore stdout
         dup2(orig_stdin, STDIN_FILENO); // Restore stdin
