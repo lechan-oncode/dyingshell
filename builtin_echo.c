@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/11 13:39:12 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/15 16:22:05 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -351,8 +351,9 @@ char *handle_path(char *path, char *last_pwd)
 int run_update_oldpwd_pwd(char *last_pwd, char *path, t_vars *vars)
 {
 	int		cmdcode;
+	char	*tmp;
 	char	*new_pwd;
-	char	**dir_pwd;
+	char	*new_oldpwd;
 
 	cmdcode = 0;
 	if (chdir(path) == -1)
@@ -362,14 +363,14 @@ int run_update_oldpwd_pwd(char *last_pwd, char *path, t_vars *vars)
 	}
 	else
 	{
-		dir_pwd = malloc(sizeof(char *) * 3);
-		dir_pwd[0] = ft_strjoin("OLDPWD=", last_pwd);
-		new_pwd = handle_path(path, last_pwd);
-		dir_pwd[1] = ft_strjoin("PWD=", new_pwd);
+		new_oldpwd = ft_strjoin("OLDPWD=", last_pwd);
+		tmp = handle_path(path, last_pwd);
+		new_pwd = ft_strjoin("PWD=", tmp);
+		free(tmp);
+		modify_env_arr(new_oldpwd, "OLDPWD", 0, vars);
+		free(new_oldpwd);
+		modify_env_arr(new_pwd, "PWD", 0, vars);
 		free(new_pwd);
-		dir_pwd[2] = NULL;
-		builtin_export(dir_pwd, vars);
-		free_arr(dir_pwd);
 	}
 	return (cmdcode);
 }
@@ -425,12 +426,43 @@ int builtin_cd(char **args, t_vars *vars)
 	else if (ft_strncmp(args[1], "-", 2) == 0)
 		cmdcode = cd_oldpwd(pwd, oldpwd, vars);
 	else
-	{
-		printf("args[1] = %s\n", args[1]);
 		cmdcode = run_update_oldpwd_pwd(pwd, args[1], vars);
-	}
 	free(home);
 	free(oldpwd);
 	free(pwd);
 	return (cmdcode);
+}
+
+void free_exit(t_vars *vars)
+{
+	free_list(vars);
+	free_ast(vars->ast);
+	free_arr(vars->exp_arr);
+}
+
+int builtin_exit(char **args, t_vars *vars)
+{
+	int i;
+
+	i = 0;
+	if (args[0] && args[1] && args[2])
+	{
+		printf("bash: exit: too many arguments\n");
+		return (1);
+	}
+	if (args[1] == NULL)
+	{
+		free_exit(vars);
+		exit(0);
+	}
+	while (args[1][i])
+	{
+		if (!ft_isdigit(args[1][i++]))
+		{
+			printf("bash: exit: %s: numeric argument required\n", args[1]);
+			exit(255);
+		}
+	}
+	free_exit(vars);
+	exit(ft_atoi(args[1]));
 }

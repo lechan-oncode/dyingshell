@@ -660,8 +660,8 @@ void execute_builtin(t_ast *node, t_vars *vars)
         builtin_unset(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "env", 4) == 0)
         builtin_env(vars);
-    // else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
-    //     ft_exit(vars);
+    else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
+        builtin_exit(node->argv, vars);
 }
 
 int is_builtin(char *cmd)
@@ -714,6 +714,7 @@ void execute_cmd(t_ast *node, t_vars *vars)
         path_list++;
     }
 }
+
 int append(t_ast *node)
 {
     int fd = -1;
