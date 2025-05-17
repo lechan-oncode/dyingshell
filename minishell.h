@@ -52,7 +52,6 @@ typedef struct s_vars
     struct s_list   *tokens;
     struct s_ast    *ast;
     char            *args;
-    int             exit_status;
 }   t_vars;
 
 // Add libft function prototypes

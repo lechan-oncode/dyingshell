@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/17 05:34:39 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/17 17:35:57 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -225,7 +225,13 @@ int builtin_env(char **args, t_vars *vars)
 	i = 0;
 	exit_code = 0;
 	if (args[1] != NULL)
-		return (ft_err_msg(args[0], args[1], 2));
+	{
+		write(2, "env: ", 5);
+		write(2, args[1], ft_strlen(args[1]));
+		write(2, ": ", 2);
+		write(2, "No such file or directory\n", 28);
+    	return (127);
+	}
 	while (vars->exp_arr[i])
 	{
 		equal = ft_trim(vars->exp_arr[i], '=', 0, 1, 0);
@@ -240,10 +246,9 @@ int builtin_env(char **args, t_vars *vars)
 int	builtin_echo(char **args, t_vars *vars)
 {
 	int i;
-	int cmdcode;
 	
-	cmdcode = 0;
 	i = 1;
+	(void)vars;
 	if (!args || !*args)
 		return (1);
 	if (args[i] && ft_strncmp(args[i], "-n", 2) == 0)
@@ -256,22 +261,25 @@ int	builtin_echo(char **args, t_vars *vars)
 	}
 	if (args[1] && ft_strncmp(args[1], "-n", 2) != 0)
 		printf("\n");
-	vars->exit_status = cmdcode;
-	return (cmdcode);
+	return (0);
 }
 
 int	builtin_pwd(char **args, t_vars *vars)
 {
-	char	*cwd;
+	char	*pwd;
 
 	(void)args;
-	cwd = ft_getenv("PWD", vars);
-	printf("%s\n", cwd);
-	if (cwd)
-		vars->exit_status = 1;	
-	free(cwd);
-	vars->exit_status = 0;
-	return (vars->exit_status);
+	pwd = ft_getenv("PWD", vars);
+	if (ft_strncmp(pwd, "", 2) == 0)
+	{
+		write(2, "pwd: error retrieving current directory: ", 41);
+		write(2, "getcwd: cannot access parent directories: ", 42);
+		write(2, "No such file or directory\n", 26);
+		return (1);
+	}	
+	printf("%s\n", pwd);
+	free(pwd);
+	return (0);
 }
 
 char *ft_join_arr_delimit(char **arr, char c)
@@ -357,18 +365,15 @@ char *handle_path(char *path, char *last_pwd)
 
 int run_update_oldpwd_pwd(char *last_pwd, char *path, t_vars *vars)
 {
-	int		cmdcode;
+	int		exit_code;
 	char	*tmp;
 	char	*new_pwd;
 	char	*new_oldpwd;
 
-	cmdcode = 0;
+	exit_code = 0;
 	if (chdir(path) == -1)
-	{
-		printf("bash: cd: %s: No such file or directory\n", path);
-		cmdcode = 1;
-	}
-	else
+		exit_code = ft_err_msg("cd", path, 2);
+	else if (ft_strncmp(path, last_pwd, ft_strlen(path)) == 0)
 	{
 		new_oldpwd = ft_strjoin("OLDPWD=", last_pwd);
 		tmp = handle_path(path, last_pwd);
@@ -379,7 +384,7 @@ int run_update_oldpwd_pwd(char *last_pwd, char *path, t_vars *vars)
 		modify_env_arr(new_pwd, "PWD", 0, vars);
 		free(new_pwd);
 	}
-	return (cmdcode);
+	return (exit_code);
 }
 
 int cd_oldpwd(char *pwd, char *oldpwd, t_vars *vars)
@@ -417,27 +422,23 @@ int builtin_cd(char **args, t_vars *vars)
 	char 	*oldpwd;
 	char	*pwd;
 	char	*home;
-	int		cmdcode;
+	int		exit_code;
 
-	cmdcode = 0;
 	oldpwd = ft_getenv("OLDPWD", vars);
 	pwd = ft_getenv("PWD", vars);
 	home = ft_getenv("HOME", vars);
 	if (args[0] && args[1] && args[2])
-	{
-    	printf("bash: cd: too many arguments\n");
-    	cmdcode = 1;
-	}
+		exit_code = ft_err_msg(args[0], 0, 0);
 	else if (args[1] == NULL || ft_strncmp(args[1], "~", 2) == 0)
-		cmdcode = cd_home(pwd, home, vars);
+		exit_code = cd_home(pwd, home, vars);
 	else if (ft_strncmp(args[1], "-", 2) == 0)
-		cmdcode = cd_oldpwd(pwd, oldpwd, vars);
+		exit_code = cd_oldpwd(pwd, oldpwd, vars);
 	else
-		cmdcode = run_update_oldpwd_pwd(pwd, args[1], vars);
+		exit_code = run_update_oldpwd_pwd(pwd, args[1], vars);
 	free(home);
 	free(oldpwd);
 	free(pwd);
-	return (cmdcode);
+	return (exit_code);
 }
 
 void free_exit(t_vars *vars)
