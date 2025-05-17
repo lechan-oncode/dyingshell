@@ -16,18 +16,6 @@
 # include <sys/types.h>
 # include <sys/wait.h>
 
-// char *ft_getenv(char *key, t_env *env_list);
-
-// typedef struct s_cmd
-// {
-//     char            *cmd;
-//     char            **args;
-//     int             fd_in;
-//     int             fd_out;
-//     int             pipefd[2];
-//     int             pid;
-// }   t_cmd;
-
 typedef enum e_type
 {
     TYPE_PIPE,
@@ -82,7 +70,7 @@ int     ft_atoi(const char *str);
 int     ft_strncmp(const char *s1, const char *s2, size_t n);
 
 int     builtin_echo(char **args, t_vars *vars);
-int     builtin_env(t_vars *vars);
+int     builtin_env(char **args, t_vars *vars);
 int     builtin_pwd(char **args, t_vars *vars);
 int     builtin_export(char **args, t_vars *vars);
 int     builtin_unset(char **args, t_vars *vars);
@@ -100,5 +88,8 @@ void    free_arr(char **arr);
 void    dup_arr(char ***arr, char **src);
 char    *ft_trim(char *str, char c, int key, int equal, int value);
 char    *ft_getenv(char *key, t_vars *vars);
+
+int ft_err_msg(char *builtin, char *msg, int err);
+
 
 # endif

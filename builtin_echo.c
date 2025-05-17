@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/15 16:22:05 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/17 05:34:39 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -167,9 +167,10 @@ int builtin_export(char **args, t_vars *vars)
 	char *key;
 	char *equal;
 	int i;
+	int exit_code;
 
 	i = 0;
-	vars->exit_status = 0;
+	exit_code = 0;
 	if (!args[1])
 		sort_export(vars);
 	else
@@ -179,7 +180,7 @@ int builtin_export(char **args, t_vars *vars)
 			key = ft_trim(args[i],  '=', 1, 0, 0);
 			equal = ft_trim(args[i],'=', 0, 1, 0);
 			if (valid_key(key) == 1)
-				vars->exit_status = 1;
+				exit_code = ft_err_msg(args[0], args[i], 1);
 			else if (ft_getenv_pos(key, vars) < 0)
             	modify_env_arr(args[i], key, 1, vars);
 			else if (equal != NULL)
@@ -188,17 +189,18 @@ int builtin_export(char **args, t_vars *vars)
 			free(equal);
 		}
 	}
-	return (vars->exit_status);
+	return (exit_code);
 }
 
 int builtin_unset(char **args, t_vars *vars)
 {
-	int i;
-	int pos;
-	char *key;
+	int		i;
+	int		pos;
+	char	*key;
+	int		exit_code;
 	
 	i = 0;
-	vars->exit_status = 0;
+	exit_code = 0;
 	while (args[++i])
 	{
 		pos = ft_getenv_pos(args[i], vars);
@@ -208,17 +210,22 @@ int builtin_unset(char **args, t_vars *vars)
 			modify_env_arr(args[i], args[i], -1, vars);
 			free(key);
 		}
+		else
+			exit_code = ft_err_msg(args[0], args[i], 1);
 	}
-	return (vars->exit_status);
+	return (exit_code);
 }
 
-int builtin_env(t_vars *vars)
+int builtin_env(char **args, t_vars *vars)
 {
 	int i;
 	char *equal;
+	int exit_code;
 	
 	i = 0;
-	vars->exit_status = 0;
+	exit_code = 0;
+	if (args[1] != NULL)
+		return (ft_err_msg(args[0], args[1], 2));
 	while (vars->exp_arr[i])
 	{
 		equal = ft_trim(vars->exp_arr[i], '=', 0, 1, 0);
@@ -227,7 +234,7 @@ int builtin_env(t_vars *vars)
 		free(equal);
 		i++;	
 	}
-	return (vars->exit_status);
+	return (exit_code);
 }	
 
 int	builtin_echo(char **args, t_vars *vars)
