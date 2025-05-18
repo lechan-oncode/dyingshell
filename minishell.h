@@ -16,6 +16,8 @@
 # include <sys/types.h>
 # include <sys/wait.h>
 
+// extern volatile sig_atomic_t g_exit_status;
+
 typedef enum e_type
 {
     TYPE_PIPE,

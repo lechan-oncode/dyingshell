@@ -170,6 +170,8 @@ int clean_space(int i, int j, t_vars *vars)
 int parsing_input(t_vars *vars)
 {
     vars->args = readline("minishell$ ");
+    if (vars->args == NULL)
+        (printf("exit\n"), exit(0));
     add_history(vars->args);
     if (clean_space(0, 0, vars))
         return (1);
@@ -674,11 +676,21 @@ int is_builtin(char *cmd)
     return (0);
 }
 
+void restore_signals(void)
+{
+    signal(SIGINT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+}
+
 void run_exec(char *valid_path, t_ast *node, t_vars *vars)
 {
-    pid_t pid = fork();
+    pid_t   pid;
+    int     status;
+    
+    pid = fork();
     if (pid == 0)
     {
+        restore_signals();
         if (execve(valid_path, node->argv, vars->exp_arr) == -1)
         {
             perror("minishell");
@@ -688,7 +700,15 @@ void run_exec(char *valid_path, t_ast *node, t_vars *vars)
     else if (pid < 0)
         perror("minishell: fork failed");
     else
-        waitpid(pid, &vars->exit_status, 0);
+    {
+        waitpid(pid, &status, 0);
+        // if (WIFEXITED(status))
+        //     g_exit_code = WEXITSTATUS(status);
+        // else if (WIFSIGNALED(status))
+        //     g_exit_code = 128 + WTERMSIG(status);
+    }
+    // return (g_exit_code);
+    return ;
 }
 
 void execute_cmd(t_ast *node, t_vars *vars)
@@ -807,7 +827,8 @@ void execute(t_ast *node, t_vars *vars)
     {
         int pipe_fd[2];
         int orig_stdout;
-        int orig_stdin; 
+        int orig_stdin;
+        int status;
         
         orig_stdout = dup(STDOUT_FILENO);
         orig_stdin = dup(STDIN_FILENO);
@@ -841,7 +862,7 @@ void execute(t_ast *node, t_vars *vars)
         // Parent process closes pipe and waits for children
         close(pipe_fd[0]);
         close(pipe_fd[1]);
-        waitpid(-1, &vars->exit_status, 0);
+        waitpid(-1, &status, 0);
         dup2(orig_stdout, STDOUT_FILENO); // Restore stdout
         dup2(orig_stdin, STDIN_FILENO); // Restore stdin
     }
@@ -865,6 +886,22 @@ void execute(t_ast *node, t_vars *vars)
     }
 }
 
+void signal_handler(int sigint)
+{
+    (void)sigint;
+    write(1, "\n", 1);
+    rl_on_new_line();
+    rl_replace_line("", 0);
+    rl_redisplay();
+    // g_exit_code = 130;
+}
+
+void init_signals(void)
+{
+    signal(SIGINT, signal_handler);
+    signal(SIGQUIT, SIG_IGN);
+}
+
 int main(int ac, char **av, char **envp)
 {
     t_vars vars;
@@ -877,6 +914,7 @@ int main(int ac, char **av, char **envp)
         vars.args = NULL;
         vars.tokens = NULL;
         vars.ast = NULL;
+        init_signals();
         parsing_input(&vars);
         expand_input(&vars);
         init_lst_type(vars.tokens);

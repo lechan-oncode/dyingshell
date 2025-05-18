@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/17 17:35:57 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/17 18:09:16 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -275,6 +275,7 @@ int	builtin_pwd(char **args, t_vars *vars)
 		write(2, "pwd: error retrieving current directory: ", 41);
 		write(2, "getcwd: cannot access parent directories: ", 42);
 		write(2, "No such file or directory\n", 26);
+		free(pwd);
 		return (1);
 	}	
 	printf("%s\n", pwd);
@@ -389,32 +390,24 @@ int run_update_oldpwd_pwd(char *last_pwd, char *path, t_vars *vars)
 
 int cd_oldpwd(char *pwd, char *oldpwd, t_vars *vars)
 {
-	int cmdcode;
+	int exit_code;
 
-	cmdcode = 0;
 	if (oldpwd == NULL || oldpwd[0] == '\0')
-	{
-		printf("bash: cd: OLDPWD not set\n");
-		cmdcode = 1;
-	}
+		exit_code = ft_err_msg("cd", NULL, 3);
 	else
-		cmdcode = run_update_oldpwd_pwd(pwd, oldpwd, vars);
-	return (cmdcode);
+		exit_code = run_update_oldpwd_pwd(pwd, oldpwd, vars);
+	return (exit_code);
 }
 
 int cd_home(char *pwd, char *home, t_vars *vars)
 {
-	int cmdcode;
-
-	cmdcode = 0;
+	int exit_code;
+	
 	if (home == NULL || home[0] == '\0')
-	{
-		printf("bash: cd: HOME not set\n");
-		cmdcode = 1;
-	}
+		exit_code = ft_err_msg("cd", NULL, 2);
 	else
-		cmdcode = run_update_oldpwd_pwd(pwd, home, vars);
-	return (cmdcode);
+		exit_code = run_update_oldpwd_pwd(pwd, home, vars);
+	return (exit_code);
 }
 
 int builtin_cd(char **args, t_vars *vars)
@@ -454,10 +447,7 @@ int builtin_exit(char **args, t_vars *vars)
 
 	i = 0;
 	if (args[0] && args[1] && args[2])
-	{
-		printf("bash: exit: too many arguments\n");
-		return (1);
-	}
+		return (ft_err_msg(args[0], NULL, 0));
 	if (args[1] == NULL)
 	{
 		free_exit(vars);
@@ -466,8 +456,9 @@ int builtin_exit(char **args, t_vars *vars)
 	while (args[1][i])
 	{
 		if (!ft_isdigit(args[1][i++]))
-		{
-			printf("bash: exit: %s: numeric argument required\n", args[1]);
+		{	
+			free_exit(vars);
+			ft_err_msg("exit", args[1], 4);
 			exit(255);
 		}
 	}
