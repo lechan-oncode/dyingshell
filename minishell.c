@@ -1,5 +1,7 @@
 #include "minishell.h"
 
+int g_exit_status;
+
 char *ft_getenv(char *key, t_vars *vars)
 {
     int i;
@@ -233,7 +235,7 @@ char    *get_spec_env_move(char *arg, int *i, int *j, t_vars *vars)
     {
         (*j)++;
         *i = *j;
-        return ("error code");
+        return (ft_itoa(g_exit_status));
     }
     return (NULL);
 }
@@ -651,19 +653,19 @@ void    make_ast(t_vars *vars)
 void execute_builtin(t_ast *node, t_vars *vars)
 {
     if (ft_strncmp(node->argv[0], "echo", 5) == 0)
-        builtin_echo(node->argv, vars);
+        g_exit_status = builtin_echo(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
-        builtin_cd(node->argv, vars);
+        g_exit_status = builtin_cd(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "pwd", 4) == 0)
-        builtin_pwd(node->argv, vars);
+        g_exit_status = builtin_pwd(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "export", 7) == 0)
-        builtin_export(node->argv, vars);
+        g_exit_status = builtin_export(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
-        builtin_unset(node->argv, vars);
+        g_exit_status = builtin_unset(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "env", 4) == 0)
-        builtin_env(node->argv, vars);
+        g_exit_status = builtin_env(node->argv, vars);
     else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
-        builtin_exit(node->argv, vars);
+        g_exit_status = builtin_exit(node->argv, vars);
 }
 
 int is_builtin(char *cmd)
@@ -676,10 +678,29 @@ int is_builtin(char *cmd)
     return (0);
 }
 
+void sigint_child(int sig)
+{
+    (void)sig;
+    write(2, "\n", 1);
+    g_exit_status = 130;
+}
+
+void sigquit_child(int sig)
+{
+    (void)sig;
+    write(2, "Quit: (core dumped)\n", 20);
+    g_exit_status = 131;
+}
+
 void restore_signals(void)
 {
-    signal(SIGINT, SIG_DFL);
-    signal(SIGQUIT, SIG_DFL);
+    struct sigaction sa;
+
+    signal(SIGINT, sigint_child);
+    sa.sa_handler = sigquit_child;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGQUIT, &sa, NULL);
 }
 
 void run_exec(char *valid_path, t_ast *node, t_vars *vars)
@@ -688,14 +709,17 @@ void run_exec(char *valid_path, t_ast *node, t_vars *vars)
     int     status;
     
     pid = fork();
+    signal(SIGINT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    restore_signals();
     if (pid == 0)
     {
-        restore_signals();
-        if (execve(valid_path, node->argv, vars->exp_arr) == -1)
-        {
-            perror("minishell");
-            exit(1);
-        }
+        execve(valid_path, node->argv, vars->exp_arr);
+        // if (execve(valid_path, node->argv, vars->exp_arr) == -1)
+        // {
+        //     perror("minishell");
+        //     exit(1);
+        // }
     }
     else if (pid < 0)
         perror("minishell: fork failed");
@@ -893,7 +917,7 @@ void signal_handler(int sigint)
     rl_on_new_line();
     rl_replace_line("", 0);
     rl_redisplay();
-    // g_exit_code = 130;
+    g_exit_status = 130;
 }
 
 void init_signals(void)
@@ -908,6 +932,7 @@ int main(int ac, char **av, char **envp)
 
     (void)ac;
     (void)av;
+    g_exit_status = 0;
     dup_arr(&vars.exp_arr, envp);
     while (1)
     {

@@ -16,7 +16,7 @@
 # include <sys/types.h>
 # include <sys/wait.h>
 
-// extern volatile sig_atomic_t g_exit_status;
+extern int g_exit_status;
 
 typedef enum e_type
 {
@@ -69,6 +69,7 @@ int     ft_isdigit(int i);
 int     ft_isspace(int i);
 int     ft_atoi(const char *str);
 int     ft_strncmp(const char *s1, const char *s2, size_t n);
+char    *ft_itoa(int n);
 
 int     builtin_echo(char **args, t_vars *vars);
 int     builtin_env(char **args, t_vars *vars);
