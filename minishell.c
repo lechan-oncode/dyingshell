@@ -694,13 +694,8 @@ void sigquit_child(int sig)
 
 void restore_signals(void)
 {
-    struct sigaction sa;
-
     signal(SIGINT, sigint_child);
-    sa.sa_handler = sigquit_child;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGQUIT, &sa, NULL);
+    signal(SIGQUIT, sigquit_child);
 }
 
 void run_exec(char *valid_path, t_ast *node, t_vars *vars)
@@ -709,29 +704,24 @@ void run_exec(char *valid_path, t_ast *node, t_vars *vars)
     int     status;
     
     pid = fork();
+    if (pid < 0)
+    {
+        ft_err_msg("error", 0, 5);
+        g_exit_status = errno;
+        return ;
+    }
     signal(SIGINT, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
-    restore_signals();
+    restore_signals();    
     if (pid == 0)
     {
+
         execve(valid_path, node->argv, vars->exp_arr);
-        // if (execve(valid_path, node->argv, vars->exp_arr) == -1)
-        // {
-        //     perror("minishell");
-        //     exit(1);
-        // }
     }
-    else if (pid < 0)
-        perror("minishell: fork failed");
     else
     {
         waitpid(pid, &status, 0);
-        // if (WIFEXITED(status))
-        //     g_exit_code = WEXITSTATUS(status);
-        // else if (WIFSIGNALED(status))
-        //     g_exit_code = 128 + WTERMSIG(status);
     }
-    // return (g_exit_code);
     return ;
 }
 

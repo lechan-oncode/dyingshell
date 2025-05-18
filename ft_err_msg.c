@@ -8,6 +8,7 @@ int err
 2 = Home not set
 3 = OLDPWD not set
 4 = numeric argument required
+5 = fork failed
 */
 
 int ft_err_msg(char *builtin, char *msg, int err)
@@ -31,5 +32,7 @@ int ft_err_msg(char *builtin, char *msg, int err)
         write(2, "OLDPWD not set\n", 15);
     else if (err == 4)
         write(2, "numeric argument required\n", 26);
+    else if (err == 5)
+        write(2, "fork failed\n", 12);
     return (1);
 }
