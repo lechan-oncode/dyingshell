@@ -650,34 +650,6 @@ void    make_ast(t_vars *vars)
     ast_return(&tmp_pipe, &branch, vars);
 }
 
-void execute_builtin(t_ast *node, t_vars *vars)
-{
-    if (ft_strncmp(node->argv[0], "echo", 5) == 0)
-        g_exit_status = builtin_echo(node->argv, vars);
-    else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
-        g_exit_status = builtin_cd(node->argv, vars);
-    else if (ft_strncmp(node->argv[0], "pwd", 4) == 0)
-        g_exit_status = builtin_pwd(node->argv, vars);
-    else if (ft_strncmp(node->argv[0], "export", 7) == 0)
-        g_exit_status = builtin_export(node->argv, vars);
-    else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
-        g_exit_status = builtin_unset(node->argv, vars);
-    else if (ft_strncmp(node->argv[0], "env", 4) == 0)
-        g_exit_status = builtin_env(node->argv, vars);
-    else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
-        g_exit_status = builtin_exit(node->argv, vars);
-}
-
-int is_builtin(char *cmd)
-{
-    if (ft_strncmp(cmd, "echo", 5) == 0 || ft_strncmp(cmd, "cd", 3) == 0 ||
-        ft_strncmp(cmd, "pwd", 4) == 0 || ft_strncmp(cmd, "export", 7) == 0 ||
-        ft_strncmp(cmd, "unset", 6) == 0 || ft_strncmp(cmd, "env", 4) == 0 ||
-        ft_strncmp(cmd, "exit", 5) == 0)
-        return (1);
-    return (0);
-}
-
 void sigint_child(int sig)
 {
     (void)sig;
@@ -694,59 +666,10 @@ void sigquit_child(int sig)
 
 void restore_signals(void)
 {
-    signal(SIGINT, sigint_child);
-    signal(SIGQUIT, sigquit_child);
-}
-
-void run_exec(char *valid_path, t_ast *node, t_vars *vars)
-{
-    // pid_t   pid;
-    // int     status;
-    
-    // pid = fork();
-    // if (pid < 0)
-    // {
-    //     ft_err_msg("error", 0, 5);
-    //     g_exit_status = errno;
-    //     return ;
-    // }
     signal(SIGINT, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
-    // restore_signals();    
-    // if (pid == 0)
-    // {
-    write(2, "execve command\n", 16);
-    execve(valid_path, node->argv, vars->exp_arr);
-    // }
-    // else
-    // {
-    //     waitpid(pid, &status, 0);
-    // }
-    return ;
-}
-
-void execute_cmd(t_ast *node, t_vars *vars)
-{
-    char **path_list;
-    char *path;
-    char *valid_path;
-    
-    if (!node || !node->argv)
-    return ;
-    path_list = ft_split(ft_getenv("PATH", vars), ':');
-    while  (*path_list)
-    {
-        path = ft_strjoin(*path_list, "/");
-        valid_path = ft_strjoin(path, node->argv[0]);
-        if (access(valid_path, X_OK) == 0)
-        {
-            run_exec(valid_path, node, vars);
-            break;
-        }
-        free(valid_path);
-        free(path);
-        path_list++;
-    }
+    signal(SIGINT, sigint_child);
+    signal(SIGQUIT, sigquit_child);
 }
 
 int append(t_ast *node)
@@ -823,6 +746,79 @@ int reccuring_redirection(t_ast *node)
     return (cmdcode);
 }
 
+void run_cmd(t_ast *node, t_vars *vars);
+
+void execute_redirect(t_ast *node, t_vars *vars)
+{   
+    int stdin_cpy;
+    int stdout_cpy;
+
+    stdin_cpy = dup(STDIN_FILENO);
+    stdout_cpy = dup(STDOUT_FILENO);
+    reccuring_redirection(node);
+    run_cmd(node->prev, vars);
+    dup2(stdin_cpy, STDIN_FILENO);
+    dup2(stdout_cpy, STDOUT_FILENO);
+    close(stdin_cpy);
+    close(stdout_cpy);
+}
+
+void run_exec(t_ast *node, t_vars *vars)
+{
+    char **path_list;
+    char *path;
+    char *valid_path;
+    
+    if (!node || !node->argv)
+    return ;
+    path_list = ft_split(ft_getenv("PATH", vars), ':');
+    while  (*path_list)
+    {
+        path = ft_strjoin(*path_list, "/");
+        valid_path = ft_strjoin(path, node->argv[0]);
+        if (access(valid_path, X_OK) == 0)
+        {
+            execve(valid_path, node->argv, vars->exp_arr);
+            // run_exec(valid_path, node, vars);
+            break;
+        }
+        free(valid_path);
+        free(path);
+        path_list++;
+    }
+}
+
+void run_cmd(t_ast *node, t_vars *vars)
+{
+    if (ft_strncmp(node->argv[0], "echo", 5) == 0)
+        g_exit_status = builtin_echo(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "cd", 3) == 0)
+        g_exit_status = builtin_cd(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "pwd", 4) == 0)
+        g_exit_status = builtin_pwd(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "export", 7) == 0)
+        g_exit_status = builtin_export(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "unset", 6) == 0)
+        g_exit_status = builtin_unset(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "env", 4) == 0)
+        g_exit_status = builtin_env(node->argv, vars);
+    else if (ft_strncmp(node->argv[0], "exit", 5) == 0)
+        g_exit_status = builtin_exit(node->argv, vars);
+    else
+        run_exec(node, vars);
+}
+
+void execute_cmd(t_ast *node, t_vars *vars)
+{
+    if (!node || !node->argv)
+        return;
+    restore_signals();
+    if (node->left != NULL)
+        execute_redirect(node->left, vars);
+    else
+        run_cmd(node, vars);
+}
+
 void execute(t_ast *node, t_vars *vars)
 {
     if (!node)
@@ -844,13 +840,17 @@ void execute(t_ast *node, t_vars *vars)
     if (pid == 0)
     {
         close(pipe_fd[0]); 
-        if (node->type == TYPE_PIPE){
+        if (node->type == TYPE_PIPE)
+        {
             dup2(pipe_fd[1], STDOUT_FILENO);
             close(pipe_fd[1]);
-            execute_cmd(node->right, vars);}
-        else if (node->type == TYPE_CMD){
+            execute_cmd(node->right, vars);
+        }
+        else if (node->type == TYPE_CMD)
+        {
             // close(pipe_fd[1]);
-            execute_cmd(node, vars);}
+            execute_cmd(node, vars);
+        }
         exit(0);
     }
     else if (pid < 0)
@@ -875,25 +875,6 @@ void execute(t_ast *node, t_vars *vars)
 	close(orig_stdout);
 	close(orig_stdin);
     waitpid(-1, &status, 0);
-    
-
-    if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
-             node->type == TYPE_APPEND || node->type == TYPE_HEREDOC)
-    {
-        int stdin_cpy;
-        int stdout_cpy;
-
-        printf("Executing redirection...\n");
-        printf("Redirection type: %d\n", node->type);
-        stdin_cpy = dup(STDIN_FILENO);
-        stdout_cpy = dup(STDOUT_FILENO);
-        reccuring_redirection(node);
-        execute_cmd(node->prev, vars);
-        dup2(stdin_cpy, STDIN_FILENO);
-        dup2(stdout_cpy, STDOUT_FILENO);
-        close(stdin_cpy);
-        close(stdout_cpy);
-    }
 }
 
 void signal_handler(int sigint)
