@@ -700,28 +700,28 @@ void restore_signals(void)
 
 void run_exec(char *valid_path, t_ast *node, t_vars *vars)
 {
-    pid_t   pid;
-    int     status;
+    // pid_t   pid;
+    // int     status;
     
-    pid = fork();
-    if (pid < 0)
-    {
-        ft_err_msg("error", 0, 5);
-        g_exit_status = errno;
-        return ;
-    }
+    // pid = fork();
+    // if (pid < 0)
+    // {
+    //     ft_err_msg("error", 0, 5);
+    //     g_exit_status = errno;
+    //     return ;
+    // }
     signal(SIGINT, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
-    restore_signals();    
-    if (pid == 0)
-    {
-
-        execve(valid_path, node->argv, vars->exp_arr);
-    }
-    else
-    {
-        waitpid(pid, &status, 0);
-    }
+    // restore_signals();    
+    // if (pid == 0)
+    // {
+    write(2, "execve command\n", 16);
+    execve(valid_path, node->argv, vars->exp_arr);
+    // }
+    // else
+    // {
+    //     waitpid(pid, &status, 0);
+    // }
     return ;
 }
 
@@ -732,7 +732,7 @@ void execute_cmd(t_ast *node, t_vars *vars)
     char *valid_path;
     
     if (!node || !node->argv)
-        return ;
+    return ;
     path_list = ft_split(ft_getenv("PATH", vars), ':');
     while  (*path_list)
     {
@@ -825,63 +825,67 @@ int reccuring_redirection(t_ast *node)
 
 void execute(t_ast *node, t_vars *vars)
 {
-    printf("Executing...\n");
+    // printf("Executing...\n");
     if (!node)
         return;
-    if (node->type == TYPE_CMD)
-    {
-        if (node->left != NULL)
-            execute(node->left, vars);
-        else if (is_builtin(node->argv[0]))
-            execute_builtin(node, vars);
-        else
-            execute_cmd(node, vars);
-    }
-    else if (node->type == TYPE_PIPE)
-    {
-        int pipe_fd[2];
-        int orig_stdout;
-        int orig_stdin;
-        int status;
+    // if (node->type == TYPE_CMD)
+    // {
+    //     if (node->left != NULL)
+    //         execute(node->left, vars);
+    //     else if (is_builtin(node->argv[0]))
+    //         execute_builtin(node, vars);
+    //     else
+    //         execute_cmd(node, vars);
+    // }
+
+    int pipe_fd[2];
+    int orig_stdout;
+    int orig_stdin;
+    int status;
         
-        orig_stdout = dup(STDOUT_FILENO);
-        orig_stdin = dup(STDIN_FILENO);
-        if (pipe(pipe_fd) == -1)
-        {
-            perror("minishell: pipe failed");
-            return;
-        }
-
-        pid_t pid = fork();
-        if (pid == 0)
-        {
-            close(pipe_fd[0]); // Close read end
-            dup2(pipe_fd[1], STDOUT_FILENO); // Redirect stdout to pipe
-            close(pipe_fd[1]);
-            execute(node->right, vars);
-            exit(0);
-        }
-        else if (pid < 0)
-        {
-            perror("minishell: fork failed");
-        }
-        if (pid > 0)
-        {
-            // Right child process
-            close(pipe_fd[1]); // Close write end
-            dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
-            close(pipe_fd[0]);
-            execute(node->left, vars);
-        }
-        // Parent process closes pipe and waits for children
-        close(pipe_fd[0]);
-        close(pipe_fd[1]);
-        waitpid(-1, &status, 0);
-        dup2(orig_stdout, STDOUT_FILENO); // Restore stdout
-        dup2(orig_stdin, STDIN_FILENO); // Restore stdin
+    orig_stdout = dup(STDOUT_FILENO);
+    orig_stdin = dup(STDIN_FILENO);
+    if (pipe(pipe_fd) == -1)
+    {
+        perror("minishell: pipe failed");
+        return;
     }
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        close(pipe_fd[0]); 
+        if (node->type == TYPE_PIPE){
+            dup2(pipe_fd[1], STDOUT_FILENO);
+            close(pipe_fd[1]);
+            execute_cmd(node->right, vars);}
+        else if (node->type == TYPE_CMD){
+            // close(pipe_fd[1]);
+            execute_cmd(node, vars);}
+        exit(0);
+    }
+    else if (pid < 0)
+    {
+        perror("minishell: fork failed");
+    }
+    if (pid > 0)
+    {
 
-    else if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
+        // Right child process
+        close(pipe_fd[1]); // Close write end
+        dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
+        close(pipe_fd[0]);
+        if (node->type == TYPE_PIPE && node->left != NULL)
+            execute(node->left, vars);
+    }
+    // Parent process closes pipe and waits for children
+    close(pipe_fd[1]);
+    waitpid(-1, &status, 0);
+    close(pipe_fd[0]);
+    dup2(orig_stdout, STDOUT_FILENO); // Restore stdout
+    dup2(orig_stdin, STDIN_FILENO); // Restore stdin
+    
+
+    if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
              node->type == TYPE_APPEND || node->type == TYPE_HEREDOC)
     {
         int stdin_cpy;
