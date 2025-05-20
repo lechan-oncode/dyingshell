@@ -825,18 +825,8 @@ int reccuring_redirection(t_ast *node)
 
 void execute(t_ast *node, t_vars *vars)
 {
-    // printf("Executing...\n");
     if (!node)
         return;
-    // if (node->type == TYPE_CMD)
-    // {
-    //     if (node->left != NULL)
-    //         execute(node->left, vars);
-    //     else if (is_builtin(node->argv[0]))
-    //         execute_builtin(node, vars);
-    //     else
-    //         execute_cmd(node, vars);
-    // }
 
     int pipe_fd[2];
     int orig_stdout;
@@ -869,20 +859,22 @@ void execute(t_ast *node, t_vars *vars)
     }
     if (pid > 0)
     {
-
-        // Right child process
-        close(pipe_fd[1]); // Close write end
-        dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
-        close(pipe_fd[0]);
         if (node->type == TYPE_PIPE && node->left != NULL)
+		{
+			close(pipe_fd[1]); // Close write end
+			dup2(pipe_fd[0], STDIN_FILENO); // Redirect stdin to pipe
+			close(pipe_fd[0]);
             execute(node->left, vars);
+		}
     }
     // Parent process closes pipe and waits for children
-    close(pipe_fd[1]);
-    waitpid(-1, &status, 0);
     close(pipe_fd[0]);
+    close(pipe_fd[1]);
     dup2(orig_stdout, STDOUT_FILENO); // Restore stdout
     dup2(orig_stdin, STDIN_FILENO); // Restore stdin
+	close(orig_stdout);
+	close(orig_stdin);
+    waitpid(-1, &status, 0);
     
 
     if (node->type == TYPE_REDIRECT_IN || node->type == TYPE_REDIRECT_OUT ||
