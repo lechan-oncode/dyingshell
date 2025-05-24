@@ -9,6 +9,7 @@ int err
 3 = OLDPWD not set
 4 = numeric argument required
 5 = fork failed
+6 = No such file or directory
 */
 
 int ft_err_msg(char *builtin, char *msg, int err)
@@ -20,7 +21,7 @@ int ft_err_msg(char *builtin, char *msg, int err)
     {
         write(2,"'", 1);
         write(2, msg, ft_strlen(msg));
-        write(2,"': ", 2);
+        write(2,"': ", 3);
     }
     if (err == 0)
         write(2, "too many arguments\n", 19);
@@ -34,5 +35,7 @@ int ft_err_msg(char *builtin, char *msg, int err)
         write(2, "numeric argument required\n", 26);
     else if (err == 5)
         write(2, "fork failed\n", 12);
+    else if (err == 6)
+        write(2, "No such file or directory\n", 26);
     return (1);
 }

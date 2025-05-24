@@ -666,8 +666,8 @@ void sigquit_child(int sig)
 
 void restore_signals(void)
 {
-    signal(SIGINT, SIG_DFL);
-    signal(SIGQUIT, SIG_DFL);
+    // signal(SIGINT, SIG_IGN);
+    // signal(SIGQUIT, SIG_IGN);
     signal(SIGINT, sigint_child);
     signal(SIGQUIT, sigquit_child);
 }
@@ -812,7 +812,7 @@ void execute_cmd(t_ast *node, t_vars *vars)
 {
     if (!node || !node->argv)
         return;
-    restore_signals();
+    // restore_signals();
     if (node->left != NULL)
         execute_redirect(node->left, vars);
     else
@@ -836,6 +836,13 @@ void execute(t_ast *node, t_vars *vars)
         perror("minishell: pipe failed");
         return;
     }
+    restore_signals();
+
+    // if (ft_strncmp(node->argv[0], "exit", 5) == 0)
+    // {
+    //     g_exit_status = builtin_exit(node->argv, vars);
+    // }
+
     pid_t pid = fork();
     if (pid == 0)
     {
@@ -866,6 +873,8 @@ void execute(t_ast *node, t_vars *vars)
 			close(pipe_fd[0]);
             execute(node->left, vars);
 		}
+
+        
     }
     // Parent process closes pipe and waits for children
     close(pipe_fd[0]);
@@ -875,6 +884,21 @@ void execute(t_ast *node, t_vars *vars)
 	close(orig_stdout);
 	close(orig_stdin);
     waitpid(-1, &status, 0);
+    
+    if (WIFEXITED(status)) {
+        g_exit_status = WEXITSTATUS(status);
+    } else {
+        // Handle abnormal termination
+        g_exit_status = 1;
+    }
+
+    // if (ft_strncmp(node->argv[0], "exit", 5) == 0)
+    // {
+    //     free_list(vars);
+    //     free_ast(vars->ast);
+    //     free_arr(vars->exp_arr);
+    //     exit(g_exit_status);
+    // }
 }
 
 void signal_handler(int sigint)
@@ -914,6 +938,15 @@ int main(int ac, char **av, char **envp)
         // read_tokens(&vars);
         make_ast(&vars);
         // print_ast(vars.ast, 0);
+
+
+        if (ft_strncmp(vars.ast->argv[0], "exit", 5) == 0)
+        {
+            g_exit_status = builtin_exit(vars.ast->argv, &vars);
+        }
+        
+
+
         execute(vars.ast, &vars);
         free_list(&vars);
         free_ast(vars.ast);

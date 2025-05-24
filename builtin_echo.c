@@ -6,7 +6,7 @@
 /*   By: codespace <codespace@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/10 22:50:35 by lechan            #+#    #+#             */
-/*   Updated: 2025/05/17 18:09:16 by codespace        ###   ########.fr       */
+/*   Updated: 2025/05/24 17:42:58 by codespace        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -373,7 +373,7 @@ int run_update_oldpwd_pwd(char *last_pwd, char *path, t_vars *vars)
 
 	exit_code = 0;
 	if (chdir(path) == -1)
-		exit_code = ft_err_msg("cd", path, 2);
+		exit_code = ft_err_msg("cd", path, 6);
 	else if (ft_strncmp(path, last_pwd, ft_strlen(path)) == 0)
 	{
 		new_oldpwd = ft_strjoin("OLDPWD=", last_pwd);
@@ -431,6 +431,7 @@ int builtin_cd(char **args, t_vars *vars)
 	free(home);
 	free(oldpwd);
 	free(pwd);
+	// printf("exit_code: %d\n", exit_code);
 	return (exit_code);
 }
 
@@ -447,7 +448,7 @@ int builtin_exit(char **args, t_vars *vars)
 
 	i = 0;
 	if (args[0] && args[1] && args[2])
-		return (ft_err_msg(args[0], NULL, 0));
+	return (ft_err_msg(args[0], NULL, 0));
 	if (args[1] == NULL)
 	{
 		free_exit(vars);
@@ -455,13 +456,20 @@ int builtin_exit(char **args, t_vars *vars)
 	}
 	while (args[1][i])
 	{
-		if (!ft_isdigit(args[1][i++]))
+		if (args[1][i] == '-' && i == 0)
+			i++;
+		else if (args[1][i] == '+' && i == 0)
+			i++;
+		else if (!ft_isdigit(args[1][i++]))
 		{	
-			free_exit(vars);
 			ft_err_msg("exit", args[1], 4);
-			exit(255);
+			free_exit(vars);
+			exit(2);
 		}
 	}
+	g_exit_status = (unsigned char)ft_atoi(args[1]);
 	free_exit(vars);
-	exit(ft_atoi(args[1]));
+	dprintf(2, "this is the exit code: %d\n", g_exit_status);
+	exit(g_exit_status);
+	// exit(ft_atoi(args[1]));
 }
